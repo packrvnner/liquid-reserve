@@ -61,6 +61,10 @@ contract NvdaVaultForkTest is Test {
     bytes32 constant OTHER_POOL_ID = 0x6547eea17cc285cac8310de7e87f41e0b172b8609c17e38fbfd81cd30c81f7bc;
     uint256 constant PRICE = 164; // dollars per wNVDAx, where the pool is opened
     uint256 constant CAP = 25_000e6; // USDC of value
+    /// The real pool was opened in Elysium block 10,010,183 and the real vault deployed in block 10,010,212
+    /// (both 2026-11-23 18:32 UTC). This rehearsal of the launch needs the pool not to exist yet, so it runs on
+    /// the chain as it stood one block before the pool was opened.
+    uint256 constant BEFORE_THE_REAL_POOL = 10_010_182;
 
     PoolKey key = PoolKey(Currency.wrap(WNVDAX), Currency.wrap(USDC), 3000, 60, IHooks(address(0)));
     LiquidityVaultV2 v;
@@ -74,12 +78,7 @@ contract NvdaVaultForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork("elysium");
-        if (address(0x19c4acb31d505650Fb0D4A96D77fc11C0d38aEd1).code.length != 0) {
-            // the real vault has been launched since: this rehearsal of the launch has had its day
-            vm.skip(true);
-            return;
-        }
+        vm.createSelectFork("elysium", BEFORE_THE_REAL_POOL);
         // the token arrives over the bridge, as it does for anyone who brings it from HyperEVM
         _bridgeIn(alice, 100e18);
         _bridgeIn(bob, 100e18);

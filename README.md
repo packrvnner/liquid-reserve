@@ -243,24 +243,23 @@ The skipped ones run against copies of the live chains, read through the public 
 ELYSIUM_FORK=true HYPEREVM_FORK=true forge test --match-path "test/fork/*"
 ```
 
-When these were run on 2026-11-25, 104 passed, none failed and 1 was skipped.
+When these were run on 2026-11-25, all 116 passed: none failed and none was skipped.
 
 Many of these suites were written to rehearse a launch or an owner step before it was sent. Once
 that step has happened on the real chain, today's chain no longer has the rehearsal's starting
 point. So those rehearsals read the chain as it stood one block before the real step. The block
 number and the date of the step are written in the test file:
 
-- `PreLaunchElysiumTest`, `DropFeederForkTest`, `YieldDirectorForkTest` and `AntxVaultForkTest`, as
-  whole suites.
+- `PreLaunchElysiumTest`, `DropFeederForkTest`, `YieldDirectorForkTest`, `AntxVaultForkTest` and
+  `NvdaVaultForkTest`, as whole suites.
 - Two tests of `LiquidVault2ForkTest`, and one test each in `HypeOnlyRouterForkTest` and
   `AscendRehearsalHypePairTest`.
 
 This needs Elysium's public endpoint to keep answering for old blocks, which it did on that day.
 
-The 1 skipped is `NvdaVaultForkTest`, a rehearsal that steps aside once the vault it rehearsed
-exists. Every other test reads the chains as they are when you run it, so its result moves with
-prices and with how much sits in the pools. A failure there deserves a look before it is taken as
-a fault in a contract.
+Every other test reads the chains as they are when you run it, so its result moves with prices and
+with how much sits in the pools. A failure there deserves a look before it is taken as a fault in a
+contract.
 
 ## The bot
 
