@@ -1,0 +1,62 @@
+# What stays out of the public repository.
+# Three parts: never publish, pointless to publish, and held back by the owner's choice.
+
+# ---------------------------------------------------------------------------
+# 1. Never publish: secrets and account details
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.vercel/
+keeper/keeper.config.json
+keeper/keeper.state.json
+keeper/keeper.state.json.tmp
+*.pem
+*.key
+keystore/
+
+# ---------------------------------------------------------------------------
+# 2. Pointless to publish: build output, downloads, local test copies, big media
+# ---------------------------------------------------------------------------
+# Compiler output and caches (rebuilt by `forge build`)
+/out/
+/out-*/
+/cache/
+/cache-*/
+/broadcast/
+
+# Downloaded packages (restored by `npm ci` in keeper/)
+node_modules/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Site settings that point at a local copy of a chain, used only for testing
+/site/deployment.local.json
+/site/deployment.fork.json
+/site/deployment.*-fork.json
+/site/tools/*.local.json
+
+# Rendered videos, their frames, and ad images made for social posts
+/media/build/
+/media/*.mp4
+/media/*.mp4.*
+/site/brand/x-*.png
+
+# ---------------------------------------------------------------------------
+# 3. Held back by the owner's choice (2026-11-25): "not yet" for the tool pages
+#    and the working logs, "no" for the rest. To include one, delete its line.
+# ---------------------------------------------------------------------------
+# Owner tool pages (local pages that build the owner's transactions)
+/site/tools/
+
+# Marketing sources (ad and demo video scripts, post images, brand render page)
+/media/
+/site/brand/src/
+
+# Internal design notes and working logs
+/docs/
+/deployments/elysium-99901/README.md
+/keeper/hosted/README.md
+/site/README.md

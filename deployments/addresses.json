@@ -1,0 +1,549 @@
+{
+  "note": "Every contract Liquid Reserve has deployed. Unaudited. 'frozenInput' is the compiler input the deployed code was built from, where a copy is kept here; 'source' is the file in this repository. Check any entry with: python3 script/check-sourcify.py",
+  "chains": {
+    "99901": {
+      "name": "Elysium",
+      "rpc": "https://rpc.elysium.kinetiq.xyz",
+      "sourcify": "https://repo.sourcify.dev/99901"
+    },
+    "999": {
+      "name": "HyperEVM",
+      "rpc": "https://rpc.hyperliquid.xyz/evm",
+      "sourcify": "https://repo.sourcify.dev/999"
+    }
+  },
+  "contracts": [
+    {
+      "group": "reserve",
+      "label": "Locked reserve (kHYPE)",
+      "chain": 99901,
+      "address": "0xeAd849357Ba8Dbc5A6F205AA0036Bd3d677b0D61",
+      "contract": "LockedReserve",
+      "source": "src/LockedReserve.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LockedReserve.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Fee inbox (vault fees and the coin's fee share arrive here)",
+      "chain": 99901,
+      "address": "0x2AfD3850794b84205667CE2826b09FA5bf1c3a5c",
+      "contract": "FeeInbox",
+      "source": "src/FeeInbox.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeInbox.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Fee splitter",
+      "chain": 99901,
+      "address": "0x635321eE277e3aa3DDd62a2A63681dcB4fFC7E4e",
+      "contract": "FeeSplitter",
+      "source": "src/FeeSplitter.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeSplitter.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Inflow allocator",
+      "chain": 99901,
+      "address": "0xB7c3865FfF8e88276a1D57D31869A2b0a839356f",
+      "contract": "InflowAllocator",
+      "source": "src/InflowAllocator.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/InflowAllocator.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "HYPE-only router",
+      "chain": 99901,
+      "address": "0x4A90a0F30fC1a1862D54327FdC15cf348aa978E1",
+      "contract": "HypeOnlyRouter",
+      "source": "src/adapters/HypeOnlyRouter.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/HypeOnlyRouter.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Drop feeder",
+      "chain": 99901,
+      "address": "0x2089dC3D846e5c0C06Cc6E9B35Abf22AB925600f",
+      "contract": "DropFeeder",
+      "source": "src/DropFeeder.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/DropFeeder.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Swap settings",
+      "chain": 99901,
+      "address": "0xe885e7D7Fda7e481Fe7466C4adB93b0C3045FF87",
+      "contract": "SwapConfig",
+      "source": "src/SwapConfig.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/SwapConfig.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Swapper",
+      "chain": 99901,
+      "address": "0xC728E5B5eF36dbbEE5920c8956EB1c145B8badE4",
+      "contract": "UniswapV4Swapper",
+      "source": "src/adapters/UniswapV4Swapper.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/UniswapV4Swapper.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Price oracle (30-minute averages)",
+      "chain": 99901,
+      "address": "0x51670e163023CC3fa63d857A655A430321Fc1f56",
+      "contract": "V4TwapOracle",
+      "source": "src/adapters/V4TwapOracle.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/V4TwapOracle.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "kHYPE rate for the reserve",
+      "chain": 99901,
+      "address": "0xcd08e24b11f4bD4e2F609964692A7E78BC09e708",
+      "contract": "TwapRateProvider",
+      "source": "src/adapters/TwapRateProvider.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/TwapRateProvider.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Timelock (48 hours)",
+      "chain": 99901,
+      "address": "0xa9e0FEAf8032c669803F68af7e93370D86e03c7F",
+      "contract": "TimelockController",
+      "source": "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/TimelockController.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Holding contract: creatorWait",
+      "chain": 99901,
+      "address": "0x0a3293Ee6D333A6Da9e0e09A9129b490193Bb1B4",
+      "contract": "FeeInbox",
+      "source": "src/FeeInbox.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeInbox.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Holding contract: liquidWait",
+      "chain": 99901,
+      "address": "0x358B0d6eA642689C1C0f5424d36adB8B09DBcecB",
+      "contract": "FeeInbox",
+      "source": "src/FeeInbox.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeInbox.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Holding contract: yieldWait",
+      "chain": 99901,
+      "address": "0xb99d0AFf4f65AC80c268a3050f72a107329909eE",
+      "contract": "FeeInbox",
+      "source": "src/FeeInbox.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeInbox.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Yield splitter (YieldSplit)",
+      "chain": 99901,
+      "address": "0x5b1429a97818E68aF558CcD84cbDab5756520675",
+      "contract": "FeeSplitter",
+      "source": "src/FeeSplitter.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeSplitter.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Holding contract: YieldRest",
+      "chain": 99901,
+      "address": "0x14938d73fdCF459c07fB749dbA21DE76e4519938",
+      "contract": "FeeInbox",
+      "source": "src/FeeInbox.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeInbox.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Yield director",
+      "chain": 99901,
+      "address": "0x4dBDb5E2cC1D666cBc159e317f458F34cAEEF928",
+      "contract": "YieldDirector",
+      "source": "src/YieldDirector.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/YieldDirector.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Vault fee splitter (VaultFeeSplit)",
+      "chain": 99901,
+      "address": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "contract": "FeeSplitter",
+      "source": "src/FeeSplitter.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/FeeSplitter.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Bridge out (KNTQ to HyperEVM)",
+      "chain": 99901,
+      "address": "0x0423ba7C14b3B0c986b1B6858598439A251Cc7d4",
+      "contract": "BridgeOut",
+      "source": "src/bridge/BridgeOut.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/BridgeOut.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Launch contract A",
+      "chain": 99901,
+      "address": "0xf6030669549B2C1403E184F93abEDf50A50Ab6f9",
+      "contract": "ReserveLaunchA",
+      "source": "src/launch/ReserveLaunch.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/elysium-99901/ReserveLaunchA.standard-input.json"
+    },
+    {
+      "group": "reserve",
+      "label": "Launch contract B",
+      "chain": 99901,
+      "address": "0x1cE0523510933B1c4389d25c83802ad999B95C4E",
+      "contract": "ReserveLaunchB",
+      "source": "src/launch/ReserveLaunch.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/elysium-99901/ReserveLaunchB.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-USDC vault",
+      "chain": 99901,
+      "address": "0x05D6A15d864A633DF9efC082aCFf7a2AB1e44911",
+      "contract": "LiquidityVaultV2",
+      "source": "src/vaults/LiquidityVaultV2.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV2.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-KNTQ vault",
+      "chain": 99901,
+      "address": "0xB7A3cFE218363E158A748aDfcb1A5a5FeD41c686",
+      "contract": "LiquidityVaultV2",
+      "source": "src/vaults/LiquidityVaultV2.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV2.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-$liquid vault (2% pool)",
+      "chain": 99901,
+      "address": "0xF49AAD222D3b9937371701e411c97018285E6691",
+      "contract": "LiquidityVaultV3",
+      "source": "src/vaults/LiquidityVaultV3.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV3.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "wANTx-USDC vault (\"ANTx-USDC\" on the site)",
+      "chain": 99901,
+      "address": "0xD14C956837b124483707170fa2775160B66FDA2E",
+      "contract": "LiquidityVaultV2",
+      "source": "src/vaults/LiquidityVaultV2.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV2.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "wNVDAx-USDC vault (\"NVDAx-USDC\" on the site)",
+      "chain": 99901,
+      "address": "0x19c4acb31d505650Fb0D4A96D77fc11C0d38aEd1",
+      "contract": "LiquidityVaultV2",
+      "source": "src/vaults/LiquidityVaultV2.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV2.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "One-token deposits (first zap)",
+      "chain": 99901,
+      "address": "0x4161ec401b91653495CfE888714C51fE01988678",
+      "contract": "VaultZap",
+      "source": "src/vaults/VaultZap.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/VaultZap.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "One-token deposits (second zap)",
+      "chain": 99901,
+      "address": "0x5F000684c94D02ba23Cd965eaAAF2D92fA40E352",
+      "contract": "VaultZapV2",
+      "source": "src/vaults/VaultZapV2.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/VaultZapV2.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "Price helper for an empty pool",
+      "chain": 99901,
+      "address": "0x26D7857d548EBADE54212BB5482f5770ae9d2548",
+      "contract": "EmptyPoolPrice",
+      "source": "src/vaults/EmptyPoolPrice.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/EmptyPoolPrice.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-$liquid vault (0.5% pool)",
+      "chain": 99901,
+      "address": "0x820cD36941BFd2F0FD4A30b3293f22ea687092A1",
+      "contract": "LiquidityVaultV3",
+      "source": "src/vaults/LiquidityVaultV3.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidityVaultV3.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-USDC vault, first version",
+      "chain": 99901,
+      "address": "0xdaaac4cc69E28CD1a4A1A8F97db464375E52E298",
+      "contract": "LiquidityVault",
+      "source": "src/vaults/LiquidityVault.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidityVault.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-KNTQ vault, first version",
+      "chain": 99901,
+      "address": "0xE78475C23691e7Fa65131C176C0D3bD5a146aDCf",
+      "contract": "LiquidityVault",
+      "source": "src/vaults/LiquidityVault.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidityVault.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-$liquid vault (2% pool), first version",
+      "chain": 99901,
+      "address": "0xB424e3dBf7483913D9824e86d70990D11CC07ce3",
+      "contract": "LiquidityVault",
+      "source": "src/vaults/LiquidityVault.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidityVault.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "HYPE-$liquid vault (0.5% pool), first version",
+      "chain": 99901,
+      "address": "0x9BDCa4A12cdbc1D74B01F1b870d12166C8A0c9e2",
+      "contract": "LiquidityVault",
+      "source": "src/vaults/LiquidityVault.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidityVault.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "Launcher of the first two vaults",
+      "chain": 99901,
+      "address": "0x970F124364aDeDbcA02AF70Ff7CC5171d34B58Ea",
+      "contract": "VaultLauncher",
+      "source": "src/vaults/VaultLauncher.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/elysium-99901/VaultLauncher.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "Launch contract of the first HYPE-$liquid vault",
+      "chain": 99901,
+      "address": "0xDe414f53f762cDAc89276dBD1151f810DA9C79C2",
+      "contract": "LiquidVaultLaunch",
+      "source": "src/launch/LiquidVaultLaunch.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/elysium-99901/LiquidVaultLaunch.standard-input.json"
+    },
+    {
+      "group": "vaults",
+      "label": "Launch contract of the first 0.5% vault (also its `realign`)",
+      "chain": 99901,
+      "address": "0xE699e8bea731851CdC7c012611512022B2313012",
+      "contract": "LiquidVaultLaunch2",
+      "source": "src/launch/LiquidVaultLaunch2.sol",
+      "status": "retired",
+      "frozenInput": "deployments/elysium-99901/LiquidVaultLaunch2.standard-input.json"
+    },
+    {
+      "group": "staking",
+      "label": "HYPE staking vault (liquidHYPE)",
+      "chain": 99901,
+      "address": "0x5B550c1DAd656B688Da2422baBb11470f5f419B0",
+      "contract": "HypeStakingVault",
+      "source": "src/staking/HypeStakingVault.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/HypeStakingVault.standard-input.json"
+    },
+    {
+      "group": "staking",
+      "label": "Reward pool for liquidHYPE",
+      "chain": 99901,
+      "address": "0x334dC48dC636dD4f84D94c1d01F37490DCcC6A59",
+      "contract": "RewardPool",
+      "source": "src/staking/RewardPool.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/RewardPool.standard-input.json"
+    },
+    {
+      "group": "staking",
+      "label": "Reward pool for liquidKNTQ",
+      "chain": 99901,
+      "address": "0xf37fa9E2826b394E8484854523aBc5102f150A44",
+      "contract": "RewardPool",
+      "source": "src/staking/RewardPool.sol",
+      "status": "live",
+      "frozenInput": "deployments/elysium-99901/RewardPool.standard-input.json"
+    },
+    {
+      "group": "staking",
+      "label": "KNTQ staking queue",
+      "chain": 99901,
+      "address": "0x14e2EdfBc51c94dba6b858c6B3dF5b2227A5E74C",
+      "contract": "KntqStakeQueue",
+      "source": "src/staking/KntqStakeQueue.sol",
+      "status": "live",
+      "frozenInput": null
+    },
+    {
+      "group": "staking",
+      "label": "Per-batch box used by the queue",
+      "chain": 99901,
+      "address": "0xdD42ca8F3550153bCCC22855D9DE47724FcC9443",
+      "contract": "StakeBox",
+      "source": "src/staking/KntqStakeQueue.sol",
+      "status": "live",
+      "frozenInput": null
+    },
+    {
+      "group": "hyperevm",
+      "label": "Locked reserve (sKNTQ)",
+      "chain": 999,
+      "address": "0x394f6103B88D4DEB3A9686991C0dE24F968094A6",
+      "contract": "LockedReserve",
+      "source": "src/LockedReserve.sol",
+      "status": "live",
+      "frozenInput": "deployments/hyperevm-999/LockedReserve.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Stake and lock",
+      "chain": 999,
+      "address": "0x06C9A2581BD8EA1ace6ada407F4289c932C7e060",
+      "contract": "StakeAndLock",
+      "source": "src/hyperevm/StakeAndLock.sol",
+      "status": "live",
+      "frozenInput": "deployments/hyperevm-999/StakeAndLock.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Yield unstake bridge",
+      "chain": 999,
+      "address": "0x38Cc13C526834b73290AD1ae59335D628DF3ac47",
+      "contract": "YieldUnstakeBridge",
+      "source": "src/hyperevm/YieldUnstakeBridge.sol",
+      "status": "live",
+      "frozenInput": "deployments/hyperevm-999/YieldUnstakeBridge.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "sKNTQ rate for the reserve",
+      "chain": 999,
+      "address": "0xe342EEdE2b7b79024A122bE515D38ec8B346FF27",
+      "contract": "ERC4626RateProvider",
+      "source": "src/adapters/ERC4626RateProvider.sol",
+      "status": "live",
+      "frozenInput": "deployments/hyperevm-999/ERC4626RateProvider.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Launch contract H1",
+      "chain": 999,
+      "address": "0x3fC483DdC75898F646aDe604a5b68598DA91F46c",
+      "contract": "ReserveLaunchH1",
+      "source": "src/launch/ReserveLaunch.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/hyperevm-999/ReserveLaunchH1.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Launch contract H2",
+      "chain": 999,
+      "address": "0x1906B8643CecD4f1508DCeC8F784400a4794A8a5",
+      "contract": "ReserveLaunchH2",
+      "source": "src/launch/ReserveLaunch.sol",
+      "status": "launch only",
+      "frozenInput": "deployments/hyperevm-999/ReserveLaunchH2.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "KNTQ staking vault (liquidKNTQ)",
+      "chain": 999,
+      "address": "0x3DE32a31484240d01f8d114bcCC570d90bc95AAb",
+      "contract": "KntqVault",
+      "source": "src/staking/KntqVault.sol",
+      "status": "live",
+      "frozenInput": null,
+      "buildProfile": "kntqvault"
+    },
+    {
+      "group": "hyperevm",
+      "label": "sKNTQ lock (staking fees into the reserve)",
+      "chain": 999,
+      "address": "0x9cce7DD4402688849A68A03D4A64c704e92301c7",
+      "contract": "SkntqLock",
+      "source": "src/staking/KntqStakingVault.sol",
+      "status": "live",
+      "frozenInput": null
+    },
+    {
+      "group": "hyperevm",
+      "label": "KNTQ staking fee splitter",
+      "chain": 999,
+      "address": "0x2c86d01601D2295E66AdE98749963f0a8a311CfF",
+      "contract": "FeeSplitter",
+      "source": "src/FeeSplitter.sol",
+      "status": "live",
+      "frozenInput": null,
+      "sameSourceAs": "deployments/elysium-99901/FeeSplitter.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Per-batch agent factory",
+      "chain": 999,
+      "address": "0x7c21642E662d7aC55685BA56480fE8eb681ebd63",
+      "contract": "KntqAgentFactory",
+      "source": "src/staking/KntqStakeBridge.sol",
+      "status": "live",
+      "frozenInput": null
+    },
+    {
+      "group": "hyperevm",
+      "label": "Per-batch agent used by the factory",
+      "chain": 999,
+      "address": "0x3bc9BDe628601aaF960b0B55aB2B3Ca6B2422cE7",
+      "contract": "KntqStakeAgent",
+      "source": "src/staking/KntqStakeBridge.sol",
+      "status": "live",
+      "frozenInput": null
+    }
+  ]
+}

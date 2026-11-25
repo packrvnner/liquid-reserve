@@ -1,0 +1,30 @@
+{
+  "name": "liquid-reserve-keeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Keeper bot for Liquid Reserve on Elysium and HyperEVM",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "once": "tsx src/index.ts --once",
+    "status": "tsx src/status.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@arbitrum/sdk": "4.1.0",
+    "dotenv": "16.6.1",
+    "ethers": "5.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "ws": "8.22.0"
+  }
+}

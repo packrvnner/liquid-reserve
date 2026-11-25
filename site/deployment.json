@@ -1,0 +1,341 @@
+{
+  "label": "Elysium mainnet",
+  "elysium": {
+    "rpc": "https://rpc.elysium.kinetiq.xyz",
+    "explorer": "https://elyscan.live",
+    "deployBlock": 0,
+    "contracts": {
+      "reserve": "",
+      "feeInbox": "",
+      "feeRouter": "",
+      "allocator": "",
+      "creatorPayout": "",
+      "yieldRouter": "",
+      "bridgeOut": "",
+      "staking": "",
+      "oracle": ""
+    },
+    "burnSink": "0x9F0b0e3B362937b07Cd1E869b50687961e0c7741",
+    "drop": { "feeder": "0x2089dC3D846e5c0C06Cc6E9B35Abf22AB925600f", "wallet": "0x0461663d46DA68264966a0670335E3ecf0b96F3C" },
+    "flywheel": { "swapConfig": "0xe885e7D7Fda7e481Fe7466C4adB93b0C3045FF87", "hypeOnlyRouter": "0x4A90a0F30fC1a1862D54327FdC15cf348aa978E1", "yieldDirector": "0x4dBDb5E2cC1D666cBc159e317f458F34cAEEF928", "since": "25 November 2026" },
+    "rewardPools": {
+      "hype": { "pool": "0x334dC48dC636dD4f84D94c1d01F37490DCcC6A59", "token": "0x5B550c1DAd656B688Da2422baBb11470f5f419B0", "symbol": "liquidHYPE" },
+      "kntq": { "pool": "0xf37fa9E2826b394E8484854523aBc5102f150A44", "token": "0xf15903dc81e8736Ee107a481b58C57db48482e09", "symbol": "liquidKNTQ" }
+    },
+    "vaultFeeInbox": "0x2AfD3850794b84205667CE2826b09FA5bf1c3a5c",
+    "vaultLauncher": "0x970F124364aDeDbcA02AF70Ff7CC5171d34B58Ea",
+    "vaultsFromBlock": 6213000,
+    "multicall": "0xcA11bde05977b3631167028862bE2a173976CA11",
+    "sourcify": "https://repo.sourcify.dev/99901",
+    "vaultZap": "0x4161ec401b91653495CfE888714C51fE01988678",
+    "vaultZap2": "0x5F000684c94D02ba23Cd965eaAAF2D92fA40E352",
+    "prelaunch": {
+      "reserve": "0xeAd849357Ba8Dbc5A6F205AA0036Bd3d677b0D61",
+      "feeSplitter": "0x635321eE277e3aa3DDd62a2A63681dcB4fFC7E4e",
+      "allocator": "0xB7c3865FfF8e88276a1D57D31869A2b0a839356f",
+      "bridgeOut": "0x0423ba7C14b3B0c986b1B6858598439A251Cc7d4",
+      "creatorWait": "0x0a3293Ee6D333A6Da9e0e09A9129b490193Bb1B4",
+      "liquidWait": "0x358B0d6eA642689C1C0f5424d36adB8B09DBcecB",
+      "yieldWait": "0xb99d0AFf4f65AC80c268a3050f72a107329909eE",
+      "oracle": "0x51670e163023CC3fa63d857A655A430321Fc1f56",
+      "timelock": "0xa9e0FEAf8032c669803F68af7e93370D86e03c7F"
+    },
+    "ascend": {
+      "coin": "0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+      "pair": "HYPE",
+      "poolId": "0xe522ea941342149346fa6641ad358ac49d8bf10abec2bba9106ac6bcc42b210c",
+      "escrow": "0x21f1BE9Ca328f9f0fCb5a0D63F4a8DcCe82839C2",
+      "seat": "0x7D5b955B49F53E452853D0a087f9B3307DfA9B99",
+      "launchedAt": 1794781274
+    },
+    "historyFromBlock": 6860000,
+    "poolManager": "0xE2e105d3F7209A9DA11f83cCf3E7398a753823F1",
+    "creatorShare": {
+      "wallet": "0x9324605c9C707b2F805CCF2AC099fCA5d561DC37",
+      "bps": 2000,
+      "vaultFeeSplit": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "yieldSplit": "0x5b1429a97818E68aF558CcD84cbDab5756520675",
+      "yieldRest": "0x14938d73fdCF459c07fB749dbA21DE76e4519938"
+    },
+    "swap": {
+      "router": "0x1B341FDD55d56F8E08409A2C25DDFad93Eb03C1a",
+      "quoter": "0x379f556c5a748bd7cc9baf0f7a344094ac1814f5",
+      "ascend": {
+        "currency0": "0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+        "currency1": "0xbA876237B0F021A6c6D852d6c26E107997cC5E81",
+        "fee": 8388608,
+        "tickSpacing": 200,
+        "hooks": "0xe0dEF4221b9840a610D4e7d55812a79A6431a8eC",
+        "liquidIs0": true
+      },
+      "pools": [
+        {
+          "name": "2% pool",
+          "fee": 20000,
+          "tickSpacing": 200
+        }
+      ]
+    },
+    "staking": {
+      "vault": "0x5B550c1DAd656B688Da2422baBb11470f5f419B0",
+      "name": "Liquid Reserve Staked HYPE",
+      "symbol": "liquidHYPE",
+      "khype": "0x248888D396A546A69A188f3Deb476964e581E9d0",
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "pool": {
+        "currency0": "0x248888D396A546A69A188f3Deb476964e581E9d0",
+        "currency1": "0xbA876237B0F021A6c6D852d6c26E107997cC5E81",
+        "fee": 8388608,
+        "tickSpacing": 1,
+        "hooks": "0x8129bab872318a64B0e6212C6C491feED06C3de3",
+        "khypeIs0": true
+      },
+      "fromBlock": 8875385
+    },
+    "kntqStaking": {
+      "queue": "0x14e2EdfBc51c94dba6b858c6B3dF5b2227A5E74C",
+      "kntq": "0xe45a355d9e9cAd2aD85F2d03E3eE3102A036acF0",
+      "share": "0xf15903dc81e8736Ee107a481b58C57db48482e09",
+      "fromBlock": 8950427,
+      "hyperevm": {
+        "vault": "0x3DE32a31484240d01f8d114bcCC570d90bc95AAb",
+        "skntq": "0x696238e0Ca31c94e24ca4CBe7921754E172E4d0F",
+        "splitter": "0x2c86d01601D2295E66AdE98749963f0a8a311CfF",
+        "lock": "0x9cce7DD4402688849A68A03D4A64c704e92301c7",
+        "agentFactory": "0x7c21642E662d7aC55685BA56480fE8eb681ebd63"
+      },
+      "rateRef": {
+        "rate": "1033406615452800900",
+        "time": 1795212944
+      }
+    }
+  },
+  "hyperevm": {
+    "rpc": "https://rpc.hyperliquid.xyz/evm",
+    "explorer": "https://hyperevmscan.io",
+    "contracts": {
+      "reserve": "",
+      "stakeAndLock": "",
+      "yieldUnstakeBridge": ""
+    },
+    "kntq": "0x000000000000780555bD0BCA3791f89f9542c2d6",
+    "skntq": "0x696238e0Ca31c94e24ca4CBe7921754E172E4d0F",
+    "prelaunch": {
+      "reserve": "0x394f6103B88D4DEB3A9686991C0dE24F968094A6",
+      "stakeAndLock": "0x06C9A2581BD8EA1ace6ada407F4289c932C7e060",
+      "yieldBridge": "0x38Cc13C526834b73290AD1ae59335D628DF3ac47"
+    }
+  },
+  "hyperliquid": {
+    "api": "https://api.hyperliquid.xyz/info",
+    "coins": {
+      "wANTx": "@1192",
+      "wNVDAx": "@702"
+    },
+    "spot": {
+      "wANTx": { "index": 1192, "szDecimals": 2 },
+      "wNVDAx": { "index": 702, "szDecimals": 2 }
+    }
+  },
+  "tokens": {
+    "KNTQ": {
+      "address": "0xe45a355d9e9cAd2aD85F2d03E3eE3102A036acF0",
+      "decimals": 18
+    },
+    "kHYPE": {
+      "address": "0x248888D396A546A69A188f3Deb476964e581E9d0",
+      "decimals": 18
+    },
+    "HYPE": {
+      "address": "0xbA876237B0F021A6c6D852d6c26E107997cC5E81",
+      "decimals": 18
+    },
+    "USDC": {
+      "address": "0xb47c4C8F73F009CC0C0d3f92B388d13E293F0B65",
+      "decimals": 6
+    },
+    "$liquid": {
+      "address": "0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+      "decimals": 18
+    },
+    "wANTx": {
+      "address": "0xd7d0288Cef796cCc5752B4352f80b74aD2929334",
+      "decimals": 18
+    },
+    "wNVDAx": {
+      "address": "0x11265018bF2d5a99fb71EFaE73aD670203C1dF44",
+      "decimals": 18
+    }
+  },
+  "pools": {
+    "stateView": "0x27eD73aE0652fdCf71d6793412A7525f32bE9dfE",
+    "hypeUsdc": "0xb3032695ffb0a66e6342876dd2386835471466cb2bb70f341947d98a69e265cc",
+    "hypeKntq": "0xf9b8a9101438145d62c9f03156b203c6c573931167e2d36f9061a32575706c8a",
+    "khypeHype": "0x890fc38d3b7ce4482eaab02250be48f596aec0b60c10f29fa2d1ccf356c3740c",
+    "liquidReserveKntq": "",
+    "liquidReserveIsCurrency0": true,
+    "liquidHype": "0xe522ea941342149346fa6641ad358ac49d8bf10abec2bba9106ac6bcc42b210c",
+    "wantxUsdc": "0x8df1ba0bdc5bcba046cbaa33ee32a17f209c39d008cd204931eff3ab76430851",
+    "wnvdaxUsdc": "0x257e5287163c7ed45b022ed1b9a04fcd116bab320b2e538490e85a49388ad7a1"
+  },
+  "vaults": [
+    {
+      "id": "hype-usdc",
+      "name": "HYPE-USDC",
+      "token0": "HYPE",
+      "token1": "USDC",
+      "feeTier": "0.30%",
+      "pool": "0xb3032695ffb0a66e6342876dd2386835471466cb2bb70f341947d98a69e265cc",
+      "address": "0x05D6A15d864A633DF9efC082aCFf7a2AB1e44911",
+      "swaps": true,
+      "note": "Swaps its surplus token itself whenever it moves its range, so it never sits idle holding only HYPE or only USDC.",
+      "verified": true
+    },
+    {
+      "id": "hype-usdc-old",
+      "name": "HYPE-USDC (old)",
+      "token0": "HYPE",
+      "token1": "USDC",
+      "feeTier": "0.30%",
+      "pool": "0xb3032695ffb0a66e6342876dd2386835471466cb2bb70f341947d98a69e265cc",
+      "address": "0xdaaac4cc69E28CD1a4A1A8F97db464375E52E298",
+      "verified": true,
+      "note": "The first version: it can end up holding one token and earning nothing. Replaced by the self-balancing HYPE-USDC vault; withdraw from here and deposit there.",
+      "retired": true
+    },
+    {
+      "id": "hype-kntq",
+      "name": "HYPE-KNTQ",
+      "token0": "HYPE",
+      "token1": "KNTQ",
+      "feeTier": "0.30%",
+      "pool": "0xf9b8a9101438145d62c9f03156b203c6c573931167e2d36f9061a32575706c8a",
+      "address": "0xB7A3cFE218363E158A748aDfcb1A5a5FeD41c686",
+      "swaps": true,
+      "note": "Swaps its surplus token itself whenever it moves its range, so it never sits idle holding only HYPE or only KNTQ. Depositors keep 80% of the trading fees; of the rest, 4% goes to the creator wallet and 16% to the reserve.",
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "verified": true
+    },
+    {
+      "id": "hype-kntq-old",
+      "name": "HYPE-KNTQ (old)",
+      "token0": "HYPE",
+      "token1": "KNTQ",
+      "feeTier": "0.30%",
+      "pool": "0xf9b8a9101438145d62c9f03156b203c6c573931167e2d36f9061a32575706c8a",
+      "address": "0xE78475C23691e7Fa65131C176C0D3bD5a146aDCf",
+      "verified": true,
+      "note": "The previous version: it can end up holding one token and earning nothing. Replaced by the self-balancing vault above; withdraw from here and deposit there.",
+      "retired": true
+    },
+    {
+      "id": "hype-liquid",
+      "name": "HYPE-$liquid",
+      "token0": "HYPE",
+      "token1": "$liquid",
+      "feeTier": "2.00%",
+      "pool": "0x688b3a50572b1f0f738f15586acadfd9c3954379f0d6e49d5093d8d4f5382bc9",
+      "address": "0xF49AAD222D3b9937371701e411c97018285E6691",
+      "note": "A pool of its own next to Ascend's, with the same 2% fee. It is the only liquidity in that pool, so it swaps its surplus in Ascend's $liquid pool whenever it moves its range. Depositors keep 80% of the trading fees; of the rest, 4% goes to the creator wallet and 16% to the reserve.",
+      "swaps": true,
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "verified": true
+    },
+    {
+      "id": "antx-usdc",
+      "name": "ANTx-USDC",
+      "token0": "USDC",
+      "token1": "wANTx",
+      "feeTier": "0.30%",
+      "fee": 3000,
+      "pool": "0x8df1ba0bdc5bcba046cbaa33ee32a17f209c39d008cd204931eff3ab76430851",
+      "address": "0xD14C956837b124483707170fa2775160B66FDA2E",
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "priceSetter": "0x26D7857d548EBADE54212BB5482f5770ae9d2548",
+      "verified": true,
+      "alone": true,
+      "note": "wANTx is the wrapped Anthropic xStock, a tokenised stock, carried to Elysium from HyperEVM over the bridge. Its issuer says xStocks are not available to people in the United States and certain other countries. This vault is the only liquidity in its pool, so the pool's price follows the market only when someone trades against the vault, and after a large move the vault can sit in one token until trades come back."
+    },
+    {
+      "id": "nvda-usdc",
+      "name": "NVDAx-USDC",
+      "token0": "wNVDAx",
+      "token1": "USDC",
+      "feeTier": "0.30%",
+      "fee": 3000,
+      "pool": "0x257e5287163c7ed45b022ed1b9a04fcd116bab320b2e538490e85a49388ad7a1",
+      "address": "0x19c4acb31d505650Fb0D4A96D77fc11C0d38aEd1",
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "priceSetter": "0x26D7857d548EBADE54212BB5482f5770ae9d2548",
+      "alone": true,
+      "note": "wNVDAx is the wrapped NVIDIA xStock, a tokenised stock, carried to Elysium from HyperEVM over the bridge. Its issuer says xStocks are not available in the United States or to U.S. persons, are not currently available in the United Kingdom, and that other country limits apply. Liquid Reserve has no tie to NVIDIA or to the issuer. This vault is the only liquidity in its pool (wNVDAx also trades in other pools on Elysium, which this vault does not use), so the pool's price follows the market only when someone trades against the vault, and after a large move the vault can sit in one token until trades come back.",
+      "verified": true
+    },
+    {
+      "id": "hype-liquid-old",
+      "name": "HYPE-$liquid (old)",
+      "token0": "HYPE",
+      "token1": "$liquid",
+      "feeTier": "2.00%",
+      "pool": "0x688b3a50572b1f0f738f15586acadfd9c3954379f0d6e49d5093d8d4f5382bc9",
+      "address": "0xB424e3dBf7483913D9824e86d70990D11CC07ce3",
+      "note": "The previous version: it can end up holding one token and earning nothing. Replaced by the self-balancing vault above; withdraw from here and deposit there.",
+      "verified": true,
+      "launch": "0xDe414f53f762cDAc89276dBD1151f810DA9C79C2",
+      "retired": true
+    },
+    {
+      "id": "hype-liquid-05",
+      "name": "HYPE-$liquid 0.5%",
+      "token0": "HYPE",
+      "token1": "$liquid",
+      "feeTier": "0.50%",
+      "pool": "0xa5f9c7396080b65dec8ea45b3e91ff73196751895159408323edd4265f92c802",
+      "address": "0x820cD36941BFd2F0FD4A30b3293f22ea687092A1",
+      "note": "Closed before anyone deposited: the HYPE-$liquid vault (2% pool) is the one in use.",
+      "realign": "0xE699e8bea731851CdC7c012611512022B2313012",
+      "swaps": true,
+      "feeTo": "0xB92c756347de468d7086a97EF112801b3371a408",
+      "verified": true,
+      "retired": true
+    },
+    {
+      "id": "hype-liquid-05-old",
+      "name": "HYPE-$liquid 0.5% (old)",
+      "token0": "HYPE",
+      "token1": "$liquid",
+      "feeTier": "0.50%",
+      "pool": "0xa5f9c7396080b65dec8ea45b3e91ff73196751895159408323edd4265f92c802",
+      "address": "0x9BDCa4A12cdbc1D74B01F1b870d12166C8A0c9e2",
+      "realign": "0xE699e8bea731851CdC7c012611512022B2313012",
+      "note": "The previous version: it can end up holding one token and earning nothing. Replaced by the self-balancing vault above; withdraw from here and deposit there.",
+      "verified": true,
+      "launch": "0xE699e8bea731851CdC7c012611512022B2313012",
+      "retired": true
+    }
+  ],
+  "x": "https://x.com/xliquidreserve",
+  "buy": [
+    {
+      "name": "Ascend",
+      "url": "https://app.ascendlaunch.xyz/tokens/0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+      "logo": "logos/ascend.png"
+    },
+    {
+      "name": "fomo",
+      "url": "https://fomo.family/tokens/elysium/0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+      "logo": "logos/fomo.png"
+    },
+    {
+      "name": "Pump.fun",
+      "url": "https://pump.fun/coin/0x247c91C14b5Aa1cF57f02d638B0287F5cd69E9f6",
+      "logo": "logos/pumpfun.png"
+    },
+    {
+      "name": "DexScreener",
+      "url": "https://dexscreener.com/elysium/0xe522ea941342149346fa6641ad358ac49d8bf10abec2bba9106ac6bcc42b210c",
+      "logo": "logos/dexscreener.png",
+      "label": "Chart on DexScreener"
+    }
+  ]
+}

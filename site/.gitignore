@@ -1,0 +1,5 @@
+deployment.local.json
+.vercel/
+.vercel
+.env*
+deployment.fork.json

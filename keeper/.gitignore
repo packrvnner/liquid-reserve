@@ -1,0 +1,5 @@
+node_modules/
+.env
+keeper.config.json
+keeper.state.json
+keeper.state.json.tmp
