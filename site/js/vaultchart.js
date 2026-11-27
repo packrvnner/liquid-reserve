@@ -77,6 +77,39 @@ export function refFor(cfg, v) {
   return { pool, invert: cfg.pools.liquidReserveIsCurrency0 !== false, name: "Ascend pool" };
 }
 
+const CANDLE = [[2 * 86_400, "5m"], [10 * 86_400, "30m"], [40 * 86_400, "2h"], [160 * 86_400, "8h"], [Infinity, "1d"]];
+const candles = new Map();
+/**
+ * A coin's price on Hyperliquid from `since` (unix seconds) to now, as [[unix, price]...]. Each stretch gives its
+ * first price, its low and high in the order they most likely came, and its last, so short spikes are kept.
+ * The stretch is chosen so that there are a few hundred of them at most.
+ */
+export async function hyperliquidPrices(api, coin, since, wicks = true) {
+  const now = Date.now(), span = now / 1000 - since, interval = CANDLE.find(([max]) => span <= max)[1];
+  const k = `${coin}|${interval}|${Math.round(since / 300)}|${wicks}`, hit = candles.get(k);
+  if (hit && now - hit.at < 120_000) return hit.data;
+  const r = await fetch(api, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type: "candleSnapshot", req: { coin, interval, startTime: Math.round(since * 1000), endTime: now } }) });
+  if (!r.ok) throw new Error(`Hyperliquid ${r.status}`);
+  const data = [];
+  for (const c of await r.json()) {
+    const t = c.t / 1000, q = (c.T - c.t) / 4000, o = Number(c.o), h = Number(c.h), l = Number(c.l), e = Number(c.c);
+    // In a thinly traded market a stretch's high or low can be one stray trade far from the rest: `wicks` false
+    // keeps the last price of each stretch only.
+    if (wicks) data.push([t, o], ...(e >= o ? [[t + q, l], [t + 2 * q, h]] : [[t + q, h], [t + 2 * q, l]]), [t + 3 * q, e]);
+    else data.push([t + 3 * q, e]);
+  }
+  candles.set(k, { at: now, data });
+  return data;
+}
+/** The tick a price sits at, on the axis of a vault as it is shown (token1 per token0). */
+export const tickAt = (v, price) => Math.round(tickOf(v, price));
+const SPAN = Object.fromEntries(WINDOWS);
+/** The outside market's price for a vault whose token trades on Hyperliquid, as the chart's reference line. */
+async function outsideRef(v, win, o, first) {
+  const now = Date.now() / 1000, since = SPAN[win] ? now - SPAN[win] : Math.min(first ?? now - 86_400, now - 3600);
+  return (await hyperliquidPrices(o.api, o.coin, since, false)).map(([t, price]) => [Math.round(t), tickAt(v, price)]);
+}
+
 async function loadHistory(v, win, ref) {
   const k = `${v.address}|${v.pool}|${win}`, hit = cache.get(k);
   if (hit && Date.now() - hit.at < 120_000) return hit.data;
@@ -146,8 +179,13 @@ export function rangeStats(s) {
 
 // ---------------------------------------------------------------- price and range chart
 
-export function priceRangeCard(v) {
+/**
+ * o (all optional): priceName, what the solid line is called ("Pool price"); single, true for a vault with one
+ * range only; refName, the name of the dashed line when there is one; note, the sentence under the chart.
+ */
+export function priceRangeCard(v, o = {}) {
   v = shown(v);
+  const refName = o.refName ?? (v.token1 === "$liquid" ? "Ascend pool price" : null);
   return `<div class="card prc">
     <div class="prc-top">
       <div><div class="label">Price and liquidity range</div>
@@ -156,43 +194,53 @@ export function priceRangeCard(v) {
     </div>
     <div class="prc-chart" id="pricerange"><div class="empty" style="padding:96px 18px">Loading price history…</div></div>
     <div class="prc-legend">
-      <span><i class="ln"></i>Pool price</span><span><i class="bx main"></i>Main range</span><span><i class="bx alt"></i>Side range</span>
-      <span><i class="ln out"></i>Price outside the ranges</span>${v.token1 === "$liquid" ? `<span><i class="ln ref"></i>Ascend pool price</span>` : ""}
+      <span><i class="ln"></i>${esc(o.priceName ?? "Pool price")}</span><span><i class="bx main"></i>${o.single ? "The vault's range" : "Main range"}</span>${o.single ? "" : `<span><i class="bx alt"></i>Side range</span>`}
+      <span><i class="ln out"></i>Price outside the range${o.single ? "" : "s"}</span>${refName ? `<span><i class="ln ref"></i>${esc(refName)}</span>` : ""}
     </div>
     <div class="prc-stats" id="prcstats"></div>
     <p class="note" id="prcnote"></p>
-    <p class="note">The vault earns trading fees only while the pool price is inside one of its ranges. When the price leaves for good, the keeper moves the ranges back around it.</p>
+    <p class="note">${o.note ?? "The vault earns trading fees only while the pool price is inside one of its ranges. When the price leaves for good, the keeper moves the ranges back around it."}</p>
   </div>`;
 }
 
-/** Loads the history for the chosen window and draws the chart; the window buttons redraw it in place. */
-export async function mountPriceRange(cfg, v) {
+/**
+ * Loads the history for the chosen window and draws the chart; the window buttons redraw it in place.
+ * o (all optional): load(win), which gives the history itself, in the shape the history service uses, for a vault
+ * that service does not know; outside { api, coin, name }, a token's price on Hyperliquid drawn as the dashed
+ * reference line (for a vault that is alone in its pool, where the pool's own price hardly moves); priceName.
+ */
+export async function mountPriceRange(cfg, v, o = {}) {
   v = shown(v);
   drawLiquidityMap(v);
   const el = document.getElementById("pricerange");
   if (!el) return;
-  const ref = refFor(cfg, v);
+  const ref = o.outside ? { name: o.outside.name ?? "Hyperliquid price", sub: "this pool's price against the outside market's", invert: false } : refFor(cfg, v);
   document.querySelectorAll("[data-cwin]").forEach((b) => b.addEventListener("click", () => {
     chart.win = b.dataset.cwin;
     document.querySelectorAll("[data-cwin]").forEach((x) => x.classList.toggle("active", x === b));
-    mountPriceRange(cfg, v);
+    mountPriceRange(cfg, v, o);
   }));
-  const win = chart.win;
+  const win = chart.win, load = () => (o.load ? o.load(win) : loadHistory(v, win, o.outside ? null : ref));
   let d = null, partial = false;
-  try { d = await loadHistory(v, win, ref); }
+  try { d = await load(); }
   catch {
     await new Promise((r) => setTimeout(r, 1500));
-    try { d = await loadHistory(v, win, ref); }
+    try { d = await load(); }
     catch { d = chainHistory(v); partial = true; } // the history service is out of reach: draw what the chain already gave us
+  }
+  // the outside market's price, when this vault has one: without it the chart is still right, only poorer
+  if (o.outside) {
+    try { d = { ...d, ref: await outsideRef(v, win, o.outside, Math.min(...[d.pool?.[0]?.[0], d.ranges?.[0]?.[0]].filter((x) => x !== undefined))) }; }
+    catch { d = { ...d, ref: [] }; }
   }
   if (chart.win !== win || !document.body.contains(el)) return;
   const s = series(v, d, ref);
-  drawPriceRange(el, v, s, ref);
+  drawPriceRange(el, v, s, ref, o);
   stats(v, s, ref);
   const note = document.getElementById("prcnote");
   if (note) note.innerHTML = partial ? `The full price history couldn't load, so this shows the vault's own on-chain events only. <button type="button" class="btn sm" id="prcretry">Try again</button>` : "";
-  document.getElementById("prcretry")?.addEventListener("click", () => mountPriceRange(cfg, v));
-  redraw = () => { if (document.body.contains(el)) { drawPriceRange(el, v, s, ref); drawLiquidityMap(v); } };
+  document.getElementById("prcretry")?.addEventListener("click", () => mountPriceRange(cfg, v, o));
+  redraw = () => { if (document.body.contains(el)) { drawPriceRange(el, v, s, ref, o); drawLiquidityMap(v); } };
 }
 
 /** The same shape as the history service's answer, built from the vault's own events (read from the chain on page load). */
@@ -216,11 +264,11 @@ function stats(v, s, ref) {
     cell("Price change", st.startK !== undefined && st.endK !== undefined ? pctTo(priceAt(v, st.startK), priceAt(v, st.endK)) : "—", win),
     cell("Range moves", String(st.moves), win),
     cell("Range edges", v.empty ? "—" : `${pctTo(p, priceAt(v, main.lower))} / ${pctTo(p, priceAt(v, main.upper))}`, "from the price now"),
-    ...(ref && lastRef ? [cell("vs Ascend pool", pctTo(priceAt(v, lastRef.k), p), "this pool's price against Ascend's")] : []),
+    ...(ref && lastRef ? [cell(`vs ${esc(ref.name)}`, pctTo(priceAt(v, lastRef.k), p), ref.sub ?? "this pool's price against Ascend's")] : []),
   ].join("");
 }
 
-function drawPriceRange(el, v, s, ref) {
+function drawPriceRange(el, v, s, ref, o = {}) {
   const W = Math.max(300, el.clientWidth || 640), H = W < 520 ? 250 : 320;
   const m = { l: 8, r: W < 520 ? 66 : 84, t: 14, b: 28 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
   const segs = segments(s);
@@ -303,9 +351,9 @@ function drawPriceRange(el, v, s, ref) {
     g.style.opacity = 1;
     const line = g.querySelector("line"), dot = g.querySelector("circle");
     line.setAttribute("x1", X(t)); line.setAttribute("x2", X(t)); dot.setAttribute("cx", X(t)); dot.setAttribute("cy", Y(k));
-    const rows = [{ name: "Pool price", color: "var(--ink)", value: quote(v, priceAt(v, k)) }];
+    const rows = [{ name: o.priceName ?? "Pool price", color: "var(--ink)", value: quote(v, priceAt(v, k)) }];
     if (r) {
-      rows.push({ name: "Main range", color: "var(--accent)", value: hasLiq(r.main.liq) ? `${fmtPrice(priceAt(v, r.main.lo))} – ${fmtPrice(priceAt(v, r.main.hi))}` : "empty" });
+      rows.push({ name: o.single ? "The vault's range" : "Main range", color: "var(--accent)", value: hasLiq(r.main.liq) ? `${fmtPrice(priceAt(v, r.main.lo))} – ${fmtPrice(priceAt(v, r.main.hi))}` : "empty" });
       if (r.alt.hi > r.alt.lo && hasLiq(r.alt.liq)) rows.push({ name: "Side range", color: "var(--accent-2)", value: `${fmtPrice(priceAt(v, r.alt.lo))} – ${fmtPrice(priceAt(v, r.alt.hi))}` });
       rows.push({ name: "Earning fees", value: inRange(r, k) ? "Yes" : "No, price outside" });
     } else rows.push({ name: "Vault", value: "not open yet" });

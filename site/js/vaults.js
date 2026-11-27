@@ -5,6 +5,7 @@ import { usd, price, amount, pct, short, ago, duration } from "./format.js";
 import { esc, icons, tile } from "./ui.js";
 import { navChart } from "./charts.js";
 import { priceRangeCard, mountPriceRange, liquidityMap, miniRange, shown as asShown } from "./vaultchart.js";
+import { hedgedTvl, hedgedLive, hedgedKnown } from "./hedged.js";
 import { stamper, dayOf, dayLabel } from "./history.js";
 import { wallet } from "./wallet.js";
 import { creatorShare } from "./creator.js";
@@ -15,6 +16,8 @@ const V = {
   totalSupply: "0x18160ddd", pendingFees: "0x224438d1", keeper: "0xaced1661", totalFees0: "0x80814ffb", totalFees1: "0xef095f8d",
   mainWidth: "0x185c6714", altWidth: "0xb1852b7a", cooldown: "0x8faee2a8", feeRecipient: "0x46904840", tickSpacing: "0xd0c93a7c",
   zapIn: "0xc7e0e42c", zapPoolManager: "0xdc4c90d3",
+  zapIn3: "0xe8c53bbc", // VaultZapV3.zapIn(address,bool,uint256,(address,address,uint24,int24,address)[],int24,int24,uint256,address)
+  quote: "0xaa9d21cb", // V4Quoter.quoteExactInputSingle(((address,address,uint24,int24,address),bool,uint128,bytes))
   setDepositsPaused: "0x1c481e2d", setDepositCap: "0x86651203", setKeeper: "0x748747e6", setRanges: "0xa59c15df",
   allowance: "0xdd62ed3e", approve: "0x095ea7b3",
   deposit: "0xfad3cc4b", withdraw: "0x1708deda", harvest: "0x4641257d", rebalance: "0x393ed075",
@@ -76,12 +79,17 @@ const VSEL = { ...V, owner: SEL.owner };
  * a contract (its reads return data).
  */
 export async function loadVaults({ cfg, e }, market, account) {
-  // Two zaps: the second (vaultZap2) is for a vault that is the only liquidity in its pool, once it is deployed.
-  const list = cfg.vaults ?? [], mc = cfg.elysium.multicall, zapAddr = cfg.elysium.vaultZap, zap2Addr = cfg.elysium.vaultZap2;
+  // Three zaps: the second (vaultZap2) is for a vault that is the only liquidity in its pool; the third (vaultZap3)
+  // is for such a vault whose other token can be bought in other pools (`routes` in its entry). Each is used once
+  // it is deployed.
+  const list = cfg.vaults ?? [], mc = cfg.elysium.multicall, zapAddr = cfg.elysium.vaultZap, zap2Addr = cfg.elysium.vaultZap2, zap3Addr = cfg.elysium.vaultZap3;
   const calls = [], ask = (to, data) => calls.push({ to, data }) - 1;
   const plan = list.map((v) => {
     const t0 = cfg.tokens[v.token0], t1 = cfg.tokens[v.token1], p = { v, t0, t1 };
     if (v.pool) p.slot0 = ask(cfg.pools.stateView, encode(SEL.getSlot0, b32(v.pool)));
+    // a token that reaches Elysium over the bridge (the stock tokens): how much of it is here at all
+    const bridged = [v.token1, v.token0].find((sym) => cfg.hyperliquid?.coins?.[sym]);
+    if (bridged && cfg.tokens[bridged]?.address) p.refSupply = ask(cfg.tokens[bridged].address, VSEL.totalSupply);
     if (!has(v.address)) return p;
     p.views = Object.fromEntries(VIEWS.map((k) => [k, ask(v.address, VSEL[k])]));
     if (account && t0?.address && t1?.address) {
@@ -94,6 +102,8 @@ export async function loadVaults({ cfg, e }, market, account) {
         zallow0: has(zapAddr) ? ask(t0.address, encode(V.allowance, addr(account), addr(zapAddr))) : -1,
         z2allow1: v.alone && has(zap2Addr) ? ask(t1.address, encode(V.allowance, addr(account), addr(zap2Addr))) : -1,
         z2allow0: v.alone && has(zap2Addr) ? ask(t0.address, encode(V.allowance, addr(account), addr(zap2Addr))) : -1,
+        z3allow1: v.routes?.length && has(zap3Addr) ? ask(t1.address, encode(V.allowance, addr(account), addr(zap3Addr))) : -1,
+        z3allow0: v.routes?.length && has(zap3Addr) ? ask(t0.address, encode(V.allowance, addr(account), addr(zap3Addr))) : -1,
       };
     }
     return p;
@@ -101,6 +111,7 @@ export async function loadVaults({ cfg, e }, market, account) {
   const clock = mc ? ask(mc, MULTICALL.timestamp) : -1;
   const zapProbe = has(zapAddr) ? ask(zapAddr, V.zapPoolManager) : -1; // answers only once the zap is deployed
   const zap2Probe = has(zap2Addr) ? ask(zap2Addr, V.zapPoolManager) : -1;
+  const zap3Probe = has(zap3Addr) ? ask(zap3Addr, V.zapPoolManager) : -1;
   // The vaults' event history is asked for at the same time as their current state, not after it.
   const fromBlock = "0x" + (cfg.elysium.vaultsFromBlock || cfg.elysium.deployBlock || 0).toString(16);
   const known = list.map((v) => v.address).filter(has);
@@ -114,11 +125,11 @@ export async function loadVaults({ cfg, e }, market, account) {
   const now = mc ? Number(toUint(words(res[clock])[0])) : parseInt(head.timestamp, 16);
   const W = (i) => (i === undefined || i < 0 || !res[i] || res[i].length < 66 ? null : words(res[i]));
 
-  const zap = W(zapProbe) ? zapAddr : null, zap2 = W(zap2Probe) ? zap2Addr : null;
+  const zap = W(zapProbe) ? zapAddr : null, zap2 = W(zap2Probe) ? zap2Addr : null, zap3 = W(zap3Probe) ? zap3Addr : null;
   const out = plan.map((p) => {
     const o = build(cfg, market, p, W, now, natBal, account), second = !!(p.v.alone && zap2);
     if (second && o.user) Object.assign(o.user, { zallow0: o.user.z2allow0, zallow1: o.user.z2allow1 }); // approvals go to the zap in use
-    return Object.assign(o, { zap: second ? zap2 : zap, zapV2: second });
+    return Object.assign(o, { zap: second ? zap2 : zap, zapV2: second, zap3: p.v.alone && p.v.routes?.length && cfg.elysium.swap?.quoter ? zap3 : null });
   });
   const live = out.filter((v) => v.live);
   if (live.length) {
@@ -146,6 +157,7 @@ function build(cfg, market, p, W, now, natBal, account) {
   // in dollars when it could be read.
   out.refSym = [v.token1, v.token0].find((s) => cfg.hyperliquid?.coins?.[s]) ?? null;
   out.refUsd = out.refSym ? market.ref?.[out.refSym] : undefined;
+  out.refSupply = W(p.refSupply) ? toUint(W(p.refSupply)[0]) : null; // how much of that token exists on Elysium (null: not read)
   const ref0 = market.ref?.[v.token0], ref1 = market.ref?.[v.token1];
   const marketPrice = (ref0 > 0 ? ref0 : out.token0Usd) / (ref1 > 0 ? ref1 : out.token1Usd);
   out.marketPrice = marketPrice;
@@ -184,7 +196,7 @@ function build(cfg, market, p, W, now, natBal, account) {
 
   if (p.user) {
     const g = (k) => { const w = W(p.user[k]); return w ? toUint(w[0]) : 0n; };
-    const u = { shares: g("shares"), bal1: g("bal1"), allow1: g("allow1"), erc0: g("erc0"), allow0: g("allow0"), zallow1: g("zallow1"), zallow0: g("zallow0"), z2allow1: g("z2allow1"), z2allow0: g("z2allow0"), native: natBal != null ? BigInt(natBal) : g("native") };
+    const u = { shares: g("shares"), bal1: g("bal1"), allow1: g("allow1"), erc0: g("erc0"), allow0: g("allow0"), zallow1: g("zallow1"), zallow0: g("zallow0"), z2allow1: g("z2allow1"), z2allow0: g("z2allow0"), z3allow1: g("z3allow1"), z3allow0: g("z3allow0"), native: natBal != null ? BigInt(natBal) : g("native") };
     u.bal0 = out.native ? u.native : u.erc0;
     u.out0 = out.supply > 0n ? (out.total0 * u.shares) / out.supply : 0n;
     u.out1 = out.supply > 0n ? (out.total1 * u.shares) / out.supply : 0n;
@@ -284,6 +296,20 @@ function badges(v) {
 const subline = (v) => `Auto-compounding · Uniswap v4 · ${esc(v.feeTier)} pool`;
 /** A vault that is the only liquidity in its pool (deployment.json "alone") says what that means, on its own page. */
 const aloneNote = (v) => (v?.alone && v.note ? `<div class="notice" style="margin-top:14px"><span class="dot"></span><div><b>About this vault.</b> ${esc(v.note)}</div></div>` : "");
+/**
+ * A vault that is the only liquidity in its pool and holds one token only: why it earns nothing, in so many words.
+ * Its money sits as offers on one side of the price, and the price there moves only when someone trades against
+ * them. This is not a fault and no keeper can change it: it takes the other token, and people trading here.
+ */
+function idleNote(v) {
+  if (!v?.alone || !v.live || v.empty || v.state !== "waiting") return "";
+  const d = asShown(v), only0 = d.total1 === 0n, held = only0 ? d.token0 : d.token1, other = only0 ? d.token1 : d.token0;
+  const r = d.alt.liquidity > 0n ? d.alt : d.main, lo = tickPrice(d, r.lower), hi = tickPrice(d, r.upper);
+  const offers = only0 ? `offers to sell ${esc(d.token0)} from ${unit(d)}${lo} up to ${unit(d)}${hi}` : `offers to buy ${esc(d.token0)} from ${unit(d)}${hi} down to ${unit(d)}${lo}`;
+  const none = v.refSupply === 0n && v.refSym ? ` There is no ${esc(v.refSym)} on Elysium at all yet: none has been brought over the bridge from HyperEVM, so nobody can trade here.` : "";
+  const off = isFinite(v.priceOff) && Math.abs(v.priceOff) >= 0.005 && v.refSym ? ` The pool's price is ${(Math.abs(d.flipped ? 1 / (1 + v.priceOff) - 1 : v.priceOff) * 100).toFixed(1)}% ${((d.flipped ? 1 / (1 + v.priceOff) - 1 : v.priceOff) > 0) ? "above" : "below"} ${esc(v.refSym)}'s price on Hyperliquid, the dashed line on the chart.` : "";
+  return `<div class="notice" style="margin-top:14px"><span class="dot"></span><div><b>Why this vault is not earning yet.</b> It holds only ${esc(held)}, which sits in the pool as ${offers}. This vault is the only liquidity in its pool, so the price here moves only when someone trades against it, and nobody has: it has earned ${usd(v.earnedUsd || 0)} in fees.${none}${off} It starts earning once it holds ${esc(other)} as well as ${esc(held)} and people trade in this pool. Nothing is wrong with the vault, and no keeper can change this for it. What is in it can be withdrawn at any time.</div></div>`;
+}
 const unaudited = (v) => `<div class="notice"><span class="dot"></span><div><b>These contracts have not been audited.</b> They are tested, including against the real Elysium pools, but an independent review has not happened yet. ${v?.capRaw > 0n ? `Deposits are capped at ${amount(tok(v.capRaw, v.d1))} ${esc(v.token1)} of value. ` : ""}Only deposit what you could afford to lose. <a class="xl" href="#/docs/risks">Risks</a></div></div>`;
 
 // ---------------------------------------------------------------- list
@@ -312,7 +338,7 @@ export function listView(S) {
     </section>
     <section style="margin-bottom:34px"><div class="label sec-label">Protocol</div>
       <div class="tiles">
-        ${tile("Vault TVL", live.length ? usd(tvl) : "—", `${live.length} of ${vs.length} live`)}
+        ${tile("Vault TVL", live.length + hedgedLive(S) ? usd(tvl + hedgedTvl(S)) : "—", `${live.length + hedgedLive(S)} of ${vs.length + hedgedKnown(S)} live${hedgedLive(S) ? ", the hedged vault among them" : ""}`)}
         ${tile("Earned for depositors", live.length ? usd(earned) : "—", "trading fees, after the 20% fee")}
         ${tile(wallet.account ? "Your deposits" : "Performance fee", wallet.account ? usd(mine) : "20%", wallet.account ? "across vaults" : "of fees earned, never of deposits")}
         ${creatorShare(S).vaultFees
@@ -327,6 +353,11 @@ export function listView(S) {
 }
 
 // ---------------------------------------------------------------- detail
+
+/** For a vault whose token also trades on Hyperliquid (the stock tokens): where the chart reads that outside price.
+ *  Such a vault is alone in its pool, so the pool's own price hardly moves, and the outside price shows where the
+ *  market really is. */
+const outsideOf = (cfg, v) => (v?.refSym && cfg.hyperliquid?.api && cfg.hyperliquid.coins?.[v.refSym] ? { api: cfg.hyperliquid.api, coin: cfg.hyperliquid.coins[v.refSym], name: "Hyperliquid price" } : null);
 
 const ui = { view: "simple", modal: null, range: "ALL", page: 0, mode: "one", ztoken: 0 };
 /** Deposits are refused while a vault's pool price is this far from the market price: adding liquidity at a wrong price loses value. */
@@ -360,6 +391,61 @@ function zapPlan(v, a, token0In) {
   return { take: Bv > 0 ? got / Bv : 0, used: av > 0 ? (share * (A2 + B2)) / av : 0, changeOther: token0In ? back : back / p };
 }
 const ZERO = "0x0000000000000000000000000000000000000000";
+
+// ---- The third zap: a one-token deposit into a vault that is alone in its pool, where the other token is bought in
+// OTHER pools on Elysium (the vault's `routes` in deployment.json) and both tokens are then deposited.
+/** How many ticks (about 0.5%) the vault's own pool may be from where this page saw it when the deposit lands. */
+const ZAP3_DRIFT = 50;
+const ERRORS3 = {
+  "0x23d96b80": "This vault's pool price moved while you were confirming, so the deposit was not made. Try again.",
+  "0xaff2e820": "The pool this deposit swaps in cannot take that much just now. Try a smaller amount, or deposit both tokens.",
+  "0xc4c321d1": "The swap route for this deposit is not valid, so nothing was sent.",
+  "0x0f5172e5": "The swap route for this deposit is not valid, so nothing was sent.",
+};
+const int256 = (n) => BigInt.asUintN(256, BigInt(n)).toString(16).padStart(64, "0");
+const keyWords = (k) => addr(k.currency0) + addr(k.currency1) + uint(k.fee) + uint(k.tickSpacing) + addr(k.hooks);
+const quoteData = (key, zeroForOne, amountIn) => V.quote + uint(0x20) + keyWords(key) + uint(zeroForOne ? 1 : 0) + uint(amountIn) + uint(0x100) + uint(0);
+/** Is a one-token deposit of this token made through the third zap? Not while the vault holds none of the token
+ *  paid: then the second zap sells it to the vault itself, which is what gives the vault its missing side. */
+const routedFor = (v, token0In) => !!v.zap3 && (v.empty || (token0In ? v.total0 : v.total1) > 0n);
+/** A route's pools in the order a payment in this token passes through them (routes are written from `from`). */
+const routePools = (v, route, token0In) => (route.from === (token0In ? v.token0 : v.token1) ? route.pools : [...route.pools].reverse());
+/** How much of a one-token payment `a` the third zap swaps: half for an empty vault, otherwise the share that matches
+ *  the vault's own mix (nothing while the vault holds only the token paid). The contract works this out the same way. */
+function routedSwap(v, a, token0In) {
+  if (v.empty) return a / 2n;
+  const sp = Number(v.sqrtP) / 2 ** 96, T0 = Number(v.total0) * sp * sp, T1 = Number(v.total1);
+  const [mine, other] = token0In ? [T0, T1] : [T1, T0];
+  return other > 0 ? (a * BigInt(Math.round((other / (mine + other)) * 1e9))) / 1_000_000_000n : 0n;
+}
+/**
+ * What each of the vault's routes gives for the part of a one-token payment that is swapped, best first.
+ * One quoter request per pool a route passes through (two at most today). Returns { swap, routes: [{ name, pools, out }] };
+ * a route that cannot take the amount is left out.
+ */
+async function quoteRoutes(S, v, a, token0In) {
+  const cfg = S.cfg, x = routedSwap(v, a, token0In), from = cfg.tokens[token0In ? v.token0 : v.token1].address.toLowerCase();
+  if (x === 0n) return { swap: 0n, routes: [] };
+  const state = v.routes.map((r) => ({ r, pools: routePools(v, r, token0In), at: from, amount: x, ok: true }));
+  for (let hop = 0; hop < 3; hop++) {
+    const todo = state.filter((s) => s.ok && s.pools[hop]);
+    if (!todo.length) break;
+    const res = await S.conn.e.multicall(todo.map((s) => ({ to: cfg.elysium.swap.quoter, data: quoteData(s.pools[hop], s.pools[hop].currency0.toLowerCase() === s.at, s.amount) })));
+    todo.forEach((s, i) => {
+      const w = res[i] && res[i].length >= 66 ? words(res[i]) : null, k = s.pools[hop];
+      if (!w || toUint(w[0]) === 0n) return (s.ok = false);
+      s.amount = toUint(w[0]);
+      s.at = (k.currency0.toLowerCase() === s.at ? k.currency1 : k.currency0).toLowerCase();
+    });
+  }
+  const routes = state.filter((s) => s.ok).map((s) => ({ name: s.r.name, pools: s.pools, out: s.amount })).sort((p, q) => (q.out > p.out ? 1 : q.out < p.out ? -1 : 0));
+  return { swap: x, routes };
+}
+/** The third zap's call. The vault's pool must be within ZAP3_DRIFT ticks of the tick this page read. */
+const zap3Data = (v, token0In, a, pools, min, receiver) =>
+  V.zapIn3 + addr(v.address) + uint(token0In ? 1 : 0) + uint(a) + uint(0x100) + int256(v.tick) + uint(ZAP3_DRIFT) + uint(min) + addr(receiver) + uint(pools.length) + pools.map(keyWords).join("");
+/** The last quote asked for in the deposit box, kept across redraws: { key, res } (res null while it is being fetched). */
+const rq = { key: "", res: null, timer: 0 };
 const isqrt = (n) => { if (n < 2n) return n; let x = n, y = (x + 1n) >> 1n; while (y < x) { x = y; y = (x + n / x) >> 1n; } return x; };
 /** A pool's sqrtPriceX96 for a price given as token1 per token0 in the tokens' smallest units. That figure is large
  *  when token1 has the more decimals (wANTx per USDC) and tiny the other way round (USDC per wNVDAx), so it is
@@ -539,11 +625,10 @@ function modal(v) {
   const tabs = `<div class="panel-tabs"><button data-open="deposit" class="${dep ? "active" : ""}">Deposit</button><button data-open="withdraw" class="${dep ? "" : "active"}">Withdraw</button></div>`;
   const field = (id, sym, bal, d, maxAttr) => `<div class="field"><label><span>${esc(sym)}</span><span>Balance ${u ? formatUnits(bal, d, 4) : "—"}</span></label>
       <div class="in"><input id="${id}" inputmode="decimal" placeholder="0.0" autocomplete="off" value="${esc(draft[id])}" /><button class="maxbtn" ${maxAttr}>MAX</button><span class="sym">${esc(sym)}</span></div></div>`;
-  // One token: through the zap once the vault has liquidity. A vault alone in its pool has nothing to swap with while
-  // it is empty, so there a first deposit with one token goes straight into the vault as it is.
-  const direct = v.empty && v.alone, canOne = dep && (direct || (v.zap && !v.empty));
-  // The token the price is quoted in (USDC for ANTx-USDC) sits below the price as buy orders; the other one above it as sell orders.
-  const flippedView = !!asShown(v).flipped, payingQuote = (ui.ztoken === 0) === flippedView, baseSym = flippedView ? v.token1 : sym0(v);
+  // One token: through a zap. A vault alone in its pool has nobody to swap with there while it is empty, so one token
+  // is only taken where the other can be bought in other pools (the third zap, `v.zap3`). Without that it takes both
+  // tokens: one token alone would sit on one side of the price and earn nothing.
+  const canOne = dep && (!!v.zap3 || (v.zap && !v.empty)), routed = routedFor(v, ui.ztoken === 0);
   const one = canOne && ui.mode === "one";
   const zsym = ui.ztoken === 0 ? sym0(v) : v.token1, zbal = ui.ztoken === 0 ? u?.bal0 ?? 0n : u?.bal1 ?? 0n, zdec = ui.ztoken === 0 ? v.d0 : v.d1;
   const modeBar = canOne ? `<div class="seggroup sm" role="group" aria-label="How to deposit" style="margin-bottom:14px"><button type="button" data-mode="one" class="${ui.mode === "one" ? "active" : ""}">One token</button><button type="button" data-mode="both" class="${ui.mode === "both" ? "active" : ""}">Both tokens</button></div>` : "";
@@ -551,14 +636,14 @@ function modal(v) {
       <div class="in"><input id="zamt" inputmode="decimal" placeholder="0.0" autocomplete="off" value="${esc(draft.zamt)}" /><button class="maxbtn" data-zmax>MAX</button><span class="sym">${esc(zsym)}</span></div></div>
     <div class="sum" id="zsum"></div>
     <button class="btn primary block" id="do-zap" ${v.paused ? "disabled" : ""}>${u ? "Deposit" : "Connect wallet"}</button>
-    <p class="note">${direct
-      ? `You are the first depositor, and this vault is the only liquidity in its pool, so there is nothing to swap with yet: your ${esc(zsym)} goes in as it is, with no swap and no fee. It waits just ${payingQuote ? "below" : "above"} the price as ${payingQuote ? "buy" : "sell"} orders for ${esc(baseSym)} and earns fees only once someone trades against it. Depositing both tokens puts the whole deposit to work straight away.`
+    <p class="note">${routed
+      ? `You pay with one token. ${v.empty ? "Half of it" : "The share of it that matches the vault's mix"} is swapped for ${esc(ui.ztoken === 0 ? v.token1 : sym0(v))} in other pools on Elysium (those pools' fees apply to that part), both tokens are deposited, and any change comes straight back, all in one transaction. The swap never touches this vault's own pool, so its price stays where it is. On a thin pool a large amount gets a worse price than a small one.`
       : `You pay with one token. The right share of it is swapped for the other in this vault's own pool (the pool's ${esc(v.feeTier)} fee applies to that part), both are deposited, and any change comes straight back. On a thin pool a large amount gets a worse price than a small one.${v.alone ? ` This vault is the only liquidity in its pool, so that swap trades against the vault itself and moves the pool's price: one deposit may swap at most ${ZAP_TAKE_MAX * 100}% of what the vault holds of the other token. Both tokens have no such limit.` : ""}`}</p>`;
   const body = one ? modeBar + oneBody : dep
     ? `${modeBar}${field("amt0", sym0(v), u?.bal0 ?? 0n, v.d0, 'data-max="0"')}${field("amt1", v.token1, u?.bal1 ?? 0n, v.d1, 'data-max="1"')}
        <div class="sum" id="dsum"></div>
        <button class="btn primary block" id="do-deposit" ${v.paused ? "disabled" : ""}>${u ? "Deposit" : "Connect wallet"}</button>
-       <p class="note">${v.empty && v.swaps ? `You are the first depositor. Any mix works, including ${esc(sym0(v))} alone: the vault swaps the right share into the other token itself and puts everything to work.` : v.empty ? "You are the first depositor, so you set the mix. Use about equal value of both tokens (the second amount is filled in for you): that puts the whole deposit to work straight away." : "Deposits go in at the vault's current mix, so the two amounts move together. Anything not needed comes straight back in the same transaction."} ${v.native ? "HYPE is sent as native HYPE." : ""}</p>`
+       <p class="note">${v.empty && v.swaps ? `You are the first depositor. Any mix works, including ${esc(sym0(v))} alone: the vault swaps the right share into the other token itself and puts everything to work.` : v.empty ? `You are the first depositor, so you set the mix. Use about equal value of both tokens (the second amount is filled in for you): that puts the whole deposit to work straight away.${v.alone ? ` This vault is the only liquidity in its pool, so it needs both: one token alone would sit on one side of the price and earn nothing.${v.zap3 ? "" : v.refSupply === 0n && v.refSym ? ` There is no ${esc(v.refSym)} on Elysium yet to buy for you, so a one-token deposit cannot be offered here: ${esc(v.refSym)} has to be brought over the bridge from HyperEVM first.` : " A one-token deposit is not offered here."}` : ""}` : "Deposits go in at the vault's current mix, so the two amounts move together. Anything not needed comes straight back in the same transaction."} ${v.native ? "HYPE is sent as native HYPE." : ""}</p>`
     : `<div class="field"><label><span>Shares</span><span>You have ${u ? formatUnits(u.shares, v.d1, 6) : "—"}</span></label>
          <div class="in"><input id="wshares" inputmode="decimal" placeholder="0.0" autocomplete="off" value="${esc(draft.wshares)}" /><span class="sym">shares</span></div></div>
        <div style="display:flex;gap:6px;margin-bottom:12px">${[25, 50, 75, 100].map((p) => `<button class="maxbtn" data-pct="${p}">${p}%</button>`).join("")}</div>
@@ -598,9 +683,10 @@ export function detailView(S, id) {
     ${positionCard(v)}
     <div class="viewtoggle"><div class="seggroup" role="group" aria-label="Detail level"><button type="button" data-view="simple" class="${ui.view === "simple" ? "active" : ""}">Simple</button><button type="button" data-view="advanced" class="${ui.view === "advanced" ? "active" : ""}">Advanced</button></div></div>
     ${tiles}
-    <div class="stack" style="margin-top:14px">${priceRangeCard(v)}${rangeCard(v)}${perfCard(v)}</div>
+    <div class="stack" style="margin-top:14px">${priceRangeCard(v, outsideOf(S.cfg, v) ? { refName: "Hyperliquid price" } : {})}${rangeCard(v)}${perfCard(v)}</div>
     ${ui.view === "advanced" ? advanced(S, v) : ""}
     ${ownerCard(v)}
+    ${idleNote(v)}
     ${aloneNote(v)}
     <div style="margin-top:14px">${unaudited(v)}</div>
     ${modal(v)}
@@ -624,18 +710,19 @@ export function bind(S, render, refresh) {
   };
   const txLink = (hash) => cfg.link("elysium", "tx", hash, "View transaction");
   /** Dry-runs a call so a failure is explained before the wallet opens. */
-  const simulate = async (data, value = 0n, to = v.address) => {
+  const simulate = async (data, value = 0n, to = v.address, texts = {}) => {
     try {
       return await e.request("eth_call", [{ from: wallet.account, to, data, value: "0x" + value.toString(16) }, "latest"]);
     } catch (err) {
       const code = String(err?.rpcError?.data?.data ?? err?.rpcError?.data ?? "").slice(0, 10);
-      throw new Error(ERRORS[code] ?? `This would fail: ${err?.rpcError?.message ?? err.message}`);
+      throw new Error(texts[code] ?? ERRORS[code] ?? `This would fail: ${err?.rpcError?.message ?? err.message}`);
     }
   };
 
   const pts = perfPoints(v), chart = $("#navchart");
   if (chart) navChart(chart, { id: v.id, points: pts, title: `${v.name} share price`, tipName: "Share price", fmt: (n) => `${n.toFixed(4)} ${v.token1}` });
-  mountPriceRange(cfg, v);
+  const outside = outsideOf(cfg, v);
+  mountPriceRange(cfg, v, outside ? { outside } : {});
 
   $$("[data-view]").forEach((b) => b.addEventListener("click", () => { ui.view = b.dataset.view; render(); }));
   $$("[data-range]").forEach((b) => b.addEventListener("click", () => { ui.range = b.dataset.range; render(); }));
@@ -698,6 +785,8 @@ export function bind(S, render, refresh) {
   const sendDeposit = async (a0, a1) => {
     if (!wallet.account) return wallet.connect();
     const q = quoteDeposit(v, a0, a1);
+    // Alone in its pool and empty: one token by itself would sit on one side of the price and earn nothing.
+    if (v.empty && v.alone && (a0 === 0n) !== (a1 === 0n)) return msg(`Enter both amounts. With ${esc(a0 === 0n ? v.token1 : sym0(v))} alone this vault would sit on one side of the price and earn nothing.`, "err");
     if (v.empty && v.priceSetter) {
       // A vault that is alone in its pool: while it is empty the pool's price cannot follow the market by itself, and
       // a first deposit at a stale price would lose value. So the pool is first put at the outside market's price,
@@ -755,18 +844,58 @@ export function bind(S, render, refresh) {
     const most = (BigInt(Math.floor(ZAP_TAKE_MAX / plan.take * 1e6)) * a) / 1_000_000n;
     return `That is too much for one deposit with one token: this vault is the only liquidity in its pool, and the swap would take ${Math.min(999, Math.round(plan.take * 100))}% of the ${esc(other)} it holds and push the pool's price away from the market. Use ${formatUnits(most, zdec, 4)} ${esc(paid)} or less, or deposit both tokens.`;
   };
+  /** A vault alone in its pool that holds only the token being paid: a deposit can only add more of that token. */
+  const oneSidedNote = () => {
+    const token0In = ui.ztoken === 0;
+    if (!v.alone || v.empty || (token0In ? v.total1 : v.total0) > 0n) return "";
+    const paid = token0In ? sym0(v) : v.token1, sole = u && u.shares > 0n && u.shares + MIN_SHARES >= v.supply;
+    return `<div class="msg" style="margin:0 0 8px;color:var(--warn)">This vault holds only ${esc(paid)} right now, and a deposit goes in at the vault's own mix: yours would go in as ${esc(paid)} alone and earn nothing until someone trades against the vault. ${sole
+      ? `You are its only depositor: withdraw first, then deposit again${v.zap3 ? "" : " with both tokens"}. An empty vault takes both tokens${v.zap3 ? ", and a one-token deposit then buys the other one for you" : ""}.`
+      : "Nothing can change that mix except trades in its pool."}</div>`;
+  };
+  /** The summary of a one-token deposit through the third zap: what is swapped elsewhere and what that costs. */
+  const paintRouted = (el, a) => {
+    const token0In = ui.ztoken === 0, paid = token0In ? sym0(v) : v.token1, other = token0In ? v.token1 : sym0(v), odec = token0In ? v.d1 : v.d0;
+    const sp = Number(v.sqrtP) / 2 ** 96, p = sp * sp, in1 = token0In ? Number(a) * p : Number(a); // value in token1
+    const x = routedSwap(v, a, token0In), key = `${v.id}:${ui.ztoken}:${a}:${v.tick}:${v.supply}`;
+    if (x > 0n && rq.key !== key) {
+      // ask the pools what that swap gives, a moment after the last keystroke
+      rq.key = key; rq.res = null;
+      clearTimeout(rq.timer);
+      rq.timer = setTimeout(async () => {
+        let res;
+        try { res = await quoteRoutes(S, v, a, token0In); } catch { res = { swap: x, routes: [], failed: true }; }
+        if (rq.key !== key) return;
+        rq.res = res;
+        if ($("#zsum") && parseUnits($("#zamt")?.value, zdec) === a && ui.ztoken === (token0In ? 0 : 1)) paintZap();
+      }, 350);
+    }
+    const best = x > 0n && rq.key === key ? rq.res?.routes?.[0] : null, pending = x > 0n && rq.key === key && !rq.res;
+    // what the swap costs, counted at this vault's own pool price: the pools' fees, and any gap between their price and this pool's
+    const x1 = token0In ? Number(x) * p : Number(x), out1 = best ? (token0In ? Number(best.out) : Number(best.out) * p) : NaN;
+    const cost1 = best ? Math.max(0, x1 - out1) : NaN, toUsd = (raw1) => (raw1 / 10 ** v.d1) * (v.token1Usd ?? NaN);
+    const value = toUsd(in1), shares = ((in1 - (isFinite(cost1) ? cost1 : 0)) / (v.empty ? 1 : v.sharePrice)) * 0.998;
+    const noRoute = x > 0n && rq.key === key && rq.res && !best;
+    const over = u && a > zbal ? `<div class="msg err" style="margin:0 0 8px">That is more than your balance.</div>`
+      : noRoute ? `<div class="msg" style="margin:0 0 8px;color:var(--warn)">No pool on Elysium can swap that much ${esc(paid)} for ${esc(other)} just now. Try a smaller amount, or deposit both tokens.</div>` : oneSidedNote();
+    const xText = `${formatUnits(x, zdec, zdec > 6 ? 6 : 4)} ${esc(paid)}`;
+    const swapLine = x === 0n ? "" : kv("Swapped in other pools", best ? `${xText} for about ${formatUnits(best.out, odec, odec > 6 ? 6 : 4)} ${esc(other)}` : pending ? `${xText} · asking the pools…` : xText);
+    const costLine = best ? kv("Cost of that swap", cost1 > 0 && isFinite(toUsd(cost1)) ? `${toUsd(cost1) < 0.01 ? "under $0.01" : `about ${usd(toUsd(cost1))}`} (${((cost1 / in1) * 100).toFixed(2)}% of your deposit)` : "next to nothing") : "";
+    el.innerHTML = `${over}${kv("You pay", `${formatUnits(a, zdec, 5)} ${esc(paid)}`)}${kv("Worth about", isFinite(value) ? usd(value) : "—")}${swapLine}${costLine}${kv("You receive about", `${amount(shares / 10 ** v.d1)} shares`)}`;
+  };
   const paintZap = () => {
     const el = $("#zsum");
     if (!el) return;
     draft.zamt = zin.value;
     const a = parseUnits(zin.value, zdec);
     if (a === 0n) return (el.innerHTML = "");
+    if (routedFor(v, ui.ztoken === 0)) return paintRouted(el, a);
     const sp = Number(v.sqrtP) / 2 ** 96, in1 = ui.ztoken === 0 ? Number(a) * sp * sp : Number(a); // value in token1
     // In a vault alone in its pool part of the payment comes back as change in the other token (see zapPlan).
     const plan = v.alone && !v.empty ? zapPlan(v, a, ui.ztoken === 0) : null, odec = ui.ztoken === 0 ? v.d1 : v.d0;
     const change = plan && plan.used >= 0.02 && plan.used < 0.99 ? kv("Comes back as change", `about ${amount(plan.changeOther / 10 ** odec)} ${esc(ui.ztoken === 0 ? v.token1 : sym0(v))}`) : "";
     const value = (in1 / 10 ** v.d1) * (v.token1Usd ?? NaN), shares = (in1 / (v.empty ? 1 : v.sharePrice)) * 0.995 * (plan ? plan.used : 1);
-    const over = u && a > zbal ? `<div class="msg err" style="margin:0 0 8px">That is more than your balance.</div>` : tooMuch(a) ? `<div class="msg" style="margin:0 0 8px;color:var(--warn)">${tooMuch(a)}</div>` : "";
+    const over = u && a > zbal ? `<div class="msg err" style="margin:0 0 8px">That is more than your balance.</div>` : tooMuch(a) ? `<div class="msg" style="margin:0 0 8px;color:var(--warn)">${tooMuch(a)}</div>` : oneSidedNote();
     el.innerHTML = `${over}${kv("You pay", `${formatUnits(a, zdec, 5)} ${esc(ui.ztoken === 0 ? sym0(v) : v.token1)}`)}${kv("Worth about", isFinite(value) ? usd(value) : "—")}${change}${kv("You receive about", `${amount(shares / 10 ** v.d1)} shares`)}`;
   };
   zin?.addEventListener("input", paintZap);
@@ -777,11 +906,59 @@ export function bind(S, render, refresh) {
     zin.value = formatUnits(zbal > gas ? zbal - gas : 0n, zdec, zdec === 18 ? 8 : zdec);
     paintZap();
   });
+  /** A one-token deposit through the third zap: the other token is bought in other pools, then both are deposited. */
+  const sendRouted = async (a, token0In) => {
+    const paid = token0In ? sym0(v) : v.token1, other = token0In ? v.token1 : sym0(v), off = Math.abs(v.priceOff ?? 0);
+    if (a === 0n) return msg("Enter an amount.", "err");
+    if (a > zbal) return msg("That is more than your balance.", "err");
+    if (v.empty) {
+      // The vault opens its range around its own pool's price, and an empty pool's price cannot follow the market by itself.
+      if (!(v.refUsd > 0)) return msg(`The market price of ${esc(v.refSym ?? other)} could not be read just now. A first deposit needs it, so nothing was sent. Try again in a moment.`, "err");
+      if (off > FIRST_OFF) {
+        // Put the pool at the market's price first, where that can be done: it moves no money. It cannot be done
+        // while a trace of an earlier deposit is still in the pool (the vault's locked shares leave one behind).
+        const target = sqrtX96For(v.marketPrice * 10 ** (v.d1 - v.d0));
+        const data = encode(V.setPoolPrice, addr(t0), addr(t1), uint(v.fee), uint(v.spacing), addr(ZERO), uint(target));
+        let can = !!v.priceSetter;
+        if (can) try { await e.request("eth_call", [{ from: wallet.account, to: v.priceSetter, data }, "latest"]); } catch { can = false; }
+        if (can) {
+          try {
+            msg("This empty pool's price has drifted from the market. Lining it up first: confirm in your wallet…");
+            await wallet.send(v.priceSetter, data, e);
+            await refresh();
+            msg("The pool's price matches the market again. Press Deposit once more.", "ok");
+          } catch (err) { msg(esc(friendly(err)), "err"); }
+          return;
+        }
+        if (off > ALONE_OFF) return msg(`This vault's pool price is ${(off * 100).toFixed(1)}% away from the market price, and it cannot be lined up just now: a trace of an earlier deposit is still in the pool. A deposit at that price would lose value, so it is not sent. Try again once the two are within ${ALONE_OFF * 100}% of each other.`, "err");
+      }
+    } else if (off > OFF_MARKET) return msg(offMarketText(v), "err");
+    try {
+      msg("Asking the pools for the best swap…");
+      const q = await quoteRoutes(S, v, a, token0In);
+      if (q.swap > 0n && !q.routes.length) return msg(`No pool on Elysium can swap that much ${esc(paid)} for ${esc(other)} just now, so nothing was sent. Try a smaller amount, or deposit both tokens.`, "err");
+      // with nothing to swap the route is not used, but the call still has to name a valid one
+      const pools = q.routes[0]?.pools ?? routePools(v, v.routes[0], token0In);
+      if ((token0In ? u.z3allow0 : u.z3allow1) < a) {
+        msg(`Approving ${esc(paid)} in your wallet…`);
+        await wallet.send(token0In ? t0 : t1, encode(V.approve, addr(v.zap3), uint(a)), e);
+      }
+      const call = (min) => zap3Data(v, token0In, a, pools, min, wallet.account);
+      // Dry-run it to learn the exact shares, then accept at most 1% fewer.
+      const expected = toUint(words(await simulate(call(0n), 0n, v.zap3, ERRORS3))[0]);
+      msg("Confirm the deposit in your wallet…");
+      const hash = await wallet.send(v.zap3, call((expected * 99n) / 100n), e);
+      draft.zamt = "";
+      msg(`Deposited${q.swap > 0n ? `, with ${esc(other)} bought through ${esc(q.routes[0].name)}` : ""}. ${txLink(hash)}`, "ok");
+      await refresh();
+    } catch (err) { msg(esc(friendly(err)), "err"); }
+  };
   $("#do-zap")?.addEventListener("click", async () => {
     if (!wallet.account) return wallet.connect();
     const a = parseUnits(zin.value, zdec), token0In = ui.ztoken === 0, asValue = token0In && v.native;
-    // An empty vault that is alone in its pool: nothing to swap with, so the one token goes straight into the vault.
-    if (v.empty && v.alone) return a === 0n ? msg("Enter an amount.", "err") : sendDeposit(token0In ? a : 0n, token0In ? 0n : a);
+    if (routedFor(v, token0In)) return sendRouted(a, token0In);
+    // An empty vault that is alone in its pool has nobody to swap with there: it needs both tokens.
+    if (v.empty && v.alone) return msg("This vault needs both tokens: one alone would sit on one side of the price and earn nothing. Use Both tokens.", "err");
     if (Math.abs(v.priceOff ?? 0) > OFF_MARKET) return msg(offMarketText(v), "err");
     if (a === 0n) return msg("Enter an amount.", "err");
     if (a > zbal) return msg("That is more than your balance.", "err");

@@ -9,6 +9,7 @@ import { isLaunched } from "./data.js";
 import { creatorShare } from "./creator.js";
 import { BANDS, flows, volOf } from "./analytics.js";
 import { flow, share } from "./flow.js";
+import { hedgedTvl, hedgedLive, hedgedCut } from "./hedged.js";
 
 const ui = { vol: 55, tvl: 40, band: 2, apr: 2.5, vapr: 15 };
 const tvlOf = (v) => { const raw = 10 ** (3 + (v / 100) * 4); const mag = 10 ** Math.floor(Math.log10(raw)); return Math.round(raw / (mag / 10)) * (mag / 10); }; // $1K .. $10M
@@ -77,9 +78,10 @@ export async function loadInbox({ cfg, e }, market) {
 // ───────── live numbers from the vaults
 function live(S) {
   const vs = (S.vaults ?? []).filter((v) => v.live);
-  const tvl = vs.reduce((s, v) => s + (v.tvlUsd || 0), 0);
+  // the hedged vault on HyperEVM feeds the reserve too: its worth counts, and the fifth of its fees that has left it
+  const tvl = vs.reduce((s, v) => s + (v.tvlUsd || 0), 0) + hedgedTvl(S);
   // depositors keep 80% of fees; the protocol's cut is the other 20%, a quarter of what depositors earned
-  const cut = vs.reduce((s, v) => s + (v.earnedUsd || 0) / 4, 0);
+  const cut = vs.reduce((s, v) => s + (v.earnedUsd || 0) / 4, 0) + hedgedCut(S);
   const dayOf = (v) => (v.age >= 3600 ? ((v.earnedUsd || 0) / 4 / v.age) * 86_400 : 0);
   const perDay = vs.reduce((s, v) => s + dayOf(v), 0);
   // vaults opened since 17 November 2026 pay a fifth of their cut to the creator; the older ones pay all of it to the reserve
@@ -87,7 +89,7 @@ function live(S) {
   const creatorPerDay = vs.reduce((s, v) => s + (share.pays(v) ? dayOf(v) * 0.2 : 0), 0);
   const aprs = vs.filter((v) => isFinite(v.apr) && v.tvlUsd > 0);
   const apr = aprs.length ? aprs.reduce((s, v) => s + v.apr * v.tvlUsd, 0) / aprs.reduce((s, v) => s + v.tvlUsd, 0) : NaN;
-  return { vs, tvl, cut, perDay, creatorPerDay, share, apr, ready: !!S.vaults };
+  return { vs, n: vs.length + hedgedLive(S), tvl, cut, perDay, creatorPerDay, share, apr, ready: !!S.vaults };
 }
 
 /** One year, at constant volume, vault size and prices. Everything in US dollars. */
@@ -140,7 +142,7 @@ function stats(S) {
       : tile("Locked in the reserve", launched ? val(r?.totalUsd, usd) : "$0", launched ? "both reserves, for good" : "starts when the reserve is deployed"),
     tile("Waiting to go in", S.inbox ? usd(S.inbox.usd) : val(undefined), pre?.live ? "moves when it outweighs the network fees 10 to 1" : "the protocol's cut, in the holding contract"),
     tile("Protocol's cut so far", L.ready ? usd(L.cut) : val(undefined), "20% of vault trading fees"),
-    tile("Vault TVL feeding it", L.ready ? usd(L.tvl) : val(undefined), `${L.vs.length} vault${L.vs.length === 1 ? "" : "s"} live`),
+    tile("Vault TVL feeding it", L.ready ? usd(L.tvl) : val(undefined), `${L.n} vault${L.n === 1 ? "" : "s"} live`),
     tile("Cut per day", L.ready ? (L.perDay > 0 ? usd(L.perDay) : "—") : val(undefined), "at the pace so far"),
     tile("Protocol revenue · 1y", L.ready ? (year > 0 ? usd(year) : "—") : val(undefined), "at today's pace, vaults only"),
     tile(flow(S).drop ? "To the reserve and the drop · 1y" : "To the reserve · 1y", L.ready ? (year > 0 ? usd(year - L.creatorPerDay * 365) : "—") : val(undefined), L.share.vaultFees ? "the cut, less the creator's fifth of the newer vaults'" : "all of the cut"),

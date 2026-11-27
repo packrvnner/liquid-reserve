@@ -10,6 +10,7 @@ import { vaultFeeText } from "./creator.js";
 import { buyCard, mountBuy } from "./buy.js";
 import * as Stake from "./stake.js";
 import * as Kntq from "./kntq.js";
+import * as Hedged from "./hedged.js";
 import * as Drop from "./drop.js";
 import * as Pools from "./pools.js";
 import { flow, share } from "./flow.js";
@@ -19,7 +20,7 @@ import { wallet } from "./wallet.js";
 
 const app = document.getElementById("app");
 const $ = (q) => document.querySelector(q);
-const S = { cfg: null, conn: null, market: null, reserves: null, flywheel: null, transit: null, staking: null, stake: null, kntq: null, oracle: null, heads: null, vaults: null, inbox: null, history: null, updated: 0, errors: {} };
+const S = { cfg: null, conn: null, market: null, reserves: null, flywheel: null, transit: null, staking: null, stake: null, kntq: null, hedged: null, oracle: null, heads: null, vaults: null, inbox: null, history: null, updated: 0, errors: {} };
 const link = (chain, kind, v, text) => explorer(S.cfg, chain, kind, v, text);
 const COLOR = { kHYPE: SER[0], sKNTQ: SER[1], "$liquid": SER[2] };
 const TARGET = { kHYPE: 0.4, sKNTQ: 0.4, "$liquid": 0.2 };
@@ -65,10 +66,12 @@ async function refresh() {
     const inboxP = guard("inbox", () => R.loadInbox(c, S.market));
     const stakeP = guard("stake", () => Stake.loadStake(c, S.market, wallet.account)); // HYPE staking (liquidHYPE)
     const kntqP = guard("kntq", () => Kntq.loadKntq(c, S.market, wallet.account)); // KNTQ staking (liquidKNTQ)
+    const hedgedP = guard("hedged", () => Hedged.loadHedged(c, wallet.account)); // the hedged vault on HyperEVM (one request there)
     const dropP = guard("drop", () => Drop.loadDrop(c)); // the $liquid drop (shown once it is live)
     const poolsP = guard("pools", () => Pools.loadPools(c, wallet.account)); // the reward pools on the staking pages
     const historyP = coinOnly ? guard("history", () => loadHistory(c, S.market)) : undefined;
-    const [vaults, inbox, stake, kntq, drop, pools] = await Promise.all([vaultsP, inboxP, stakeP, kntqP, dropP, poolsP]);
+    const [vaults, inbox, stake, kntq, drop, pools, hedged] = await Promise.all([vaultsP, inboxP, stakeP, kntqP, dropP, poolsP, hedgedP]);
+    S.hedged = hedged ?? S.hedged;
     S.drop = drop ?? S.drop;
     S.pools = pools ?? S.pools;
     S.vaults = vaults ?? S.vaults;
@@ -376,7 +379,9 @@ function render(fromRefresh = false) {
   document.querySelectorAll(".rail .item, .tabbar .item").forEach((a) => a.classList.toggle("active", a.dataset.route === r.name));
   stopVessel?.(); stopVessel = null;
   const api = { render, refresh };
-  if (r.raw === "vaults") app.innerHTML = `<div class="page">${V.listView(S)}</div>`;
+  const hedged = r.raw === "vault" && Hedged.isRoute(S, r.arg); // the hedged vault has its own page (js/hedged.js)
+  if (r.raw === "vaults") app.innerHTML = `<div class="page">${V.listView(S)}${Hedged.listSection(S)}</div>`;
+  else if (hedged) app.innerHTML = `<div class="page">${Hedged.view(S)}</div>`;
   else if (r.raw === "vault") app.innerHTML = `<div class="page">${V.detailView(S, r.arg)}</div>`;
   else if (r.raw === "stake") app.innerHTML = r.arg === "kntq" ? Kntq.view(S) : Stake.view(S);
   else if (r.name === "analytics") app.innerHTML = A.view(S);
@@ -385,7 +390,8 @@ function render(fromRefresh = false) {
   else if (r.name === "docs") app.innerHTML = Docs.view(S, r.arg);
   else app.innerHTML = homeView();
 
-  if (r.raw === "vaults" || r.raw === "vault") V.bind(S, render, refresh);
+  if (hedged) Hedged.mount(S, api);
+  else if (r.raw === "vaults" || r.raw === "vault") V.bind(S, render, refresh);
   else if (r.raw === "stake") (r.arg === "kntq" ? Kntq : Stake).mount(S, api);
   else if (r.name === "analytics") A.mount(S, api);
   else if (r.name === "reserve") R.mount(S, api);

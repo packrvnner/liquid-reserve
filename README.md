@@ -27,6 +27,16 @@ from the code here. The section [Check it yourself](#check-it-yourself) says how
 - **Liquidity vaults.** Each vault holds liquidity in one Uniswap v4 pool, collects the trading fees
   and adds them back to the position. Depositors keep 80% of the fees. The other 20% is split between
   the creator and the reserve. Deposits can be paused by the owner. Withdrawals cannot.
+- **Hedged vault (a pilot).** [`HedgedVault`](src/hedged/HedgedVault.sol) is on HyperEVM and takes
+  USDC. It holds one range of liquidity in the HYPE/USDC pool on Project X, and a short on HYPE on
+  Hyperliquid's exchange that is as large as the HYPE it holds, so that its value is built not to
+  follow HYPE's price. The vault contract is its own account on that exchange: it sends its own
+  orders, and no key exists that could trade for it. What a holder gets is trading fees, minus what
+  the position loses on price swings, minus the cost of the hedge, plus or minus funding. That can be
+  negative. 20% of the collected trading fees go to [`FeeForwarder`](src/hedged/FeeForwarder.sol),
+  which can send them to one place only: across the bridge to the splitter on Elysium that the other
+  vaults pay into. It has been live since 2026-11-27 as a pilot: the owner sets a cap on what it may
+  hold.
 - **Staking vaults.** liquidHYPE is a vault over kHYPE on Elysium. liquidKNTQ is a vault over sKNTQ
   (Kinetiq's staked KNTQ) on HyperEVM, with a queue on Elysium that carries deposits across the
   bridge in batches. Each takes 20% of the yield its holdings earn as a fee. When this was written
@@ -57,18 +67,20 @@ Almost every step is a function anyone may call. The bot only calls them on a sc
 
 ## Who can change what
 
-Read from the chain on 2026-11-25. Check the current state yourself: these can change.
+Read from the chain on 2026-11-25, and for the hedged vault on 2026-11-27. Check the current state
+yourself: these can change.
 
 | Who | Address | What it can do |
 |---|---|---|
-| Owner wallet | `0x822aA88543b9da39c4c3D856857379E17526C1E8` | On each vault: set the range widths, name the keeper, set the deposit cap, pause deposits, all within limits fixed in the code. On the staking vaults: pause deposits, set the cap. On the KNTQ queue: pause deposits, name the keeper. On the yield director: change the shares between the listed destinations, at once. On the timelock: it is the only address that may propose and carry out operations. |
+| Owner wallet | `0x822aA88543b9da39c4c3D856857379E17526C1E8` | On each vault: set the range widths, name the keeper, set the deposit cap, pause deposits, all within limits fixed in the code. On the staking vaults: pause deposits, set the cap. On the KNTQ queue: pause deposits, name the keeper. On the yield director: change the shares between the listed destinations, at once. On the hedged vault: pause deposits, set the cap, name the keeper, set how far the short may drift before it is corrected (1% to 10%), the margin kept for it (30% to 100% of the short) and the range width, each within limits fixed in the code, and start a wind-down, which cannot be undone. On the timelock: it is the only address that may propose and carry out operations. |
 | Timelock, 48 hours | `0xa9e0FEAf8032c669803F68af7e93370D86e03c7F` | Owns `SwapConfig` (which swapper and oracle the fee path uses; the slippage limit, at most 3%), the swapper's routes, the oracle's feeds, routes and keeper list, `DropFeeder` (which wallet is the drop; a successor) and the yield director's list of destinations and its manager. Every change waits 48 hours on-chain before it can be carried out. |
-| Bot wallet | `0x0461663d46DA68264966a0670335E3ecf0b96F3C` | Keeper of the vaults: it may re-centre a vault's ranges (the vault refuses if the price has moved from the one the bot states, and enforces a 15-minute gap). Keeper of the oracle: it may take a price reading while a feed is fresh. Keeper of the KNTQ queue. It also holds the drop's $liquid. |
+| Bot wallet | `0x0461663d46DA68264966a0670335E3ecf0b96F3C` | Keeper of the vaults: it may re-centre a vault's ranges (the vault refuses if the price has moved from the one the bot states, and enforces a 15-minute gap). Keeper of the oracle: it may take a price reading while a feed is fresh. Keeper of the KNTQ queue. Keeper of the hedged vault: it may put idle USDC into the position and move the range (the vault refuses if the pool's price is not near the one the bot states). It also holds the drop's $liquid. |
 | Creator wallet | `0x9324605c9C707b2F805CCF2AC099fCA5d561DC37` | Receives the creator's share. No powers. |
-| Nobody | | `LockedReserve`, `FeeSplitter`, `InflowAllocator`, `HypeOnlyRouter`, `RewardPool`, both zaps and the price helper have no owner. |
+| Nobody | | `LockedReserve`, `FeeSplitter`, `InflowAllocator`, `HypeOnlyRouter`, `RewardPool`, both zaps, the price helper and the hedged vault's `FeeForwarder` have no owner. |
 
 Neither the owner, the timelock nor the bot can take deposits out of a vault, pause withdrawals, or
-withdraw what the reserve holds.
+withdraw what the reserve holds. A wind-down of the hedged vault takes its position out of the pool
+and closes its short. Withdrawals go on as before.
 
 ## Known weak points
 
@@ -90,6 +102,15 @@ withdraw what the reserve holds.
 - **Vaults that are alone in their pool** (wANTx-USDC, wNVDAx-USDC) end up holding one token after a
   price move, and while such a pool is empty anyone can set its price through
   [`EmptyPoolPrice`](src/vaults/EmptyPoolPrice.sol).
+- **The hedged vault is new and depends on Hyperliquid.** It has been live only since 2026-11-27, as
+  a pilot with a deposit cap. Its short and the margin for it sit on Hyperliquid's exchange, so it
+  depends on that exchange working, on its price and on its rules staying as they are. The exchange
+  carries out orders and transfers after the transaction that sends them and reports no failure. The
+  code is written around that, and it is the part least like anything else in this repository. The
+  short is corrected in steps, so between corrections the vault's value follows part of HYPE's moves.
+  If HYPE rises fast and far before the margin is topped up, the exchange closes the short at a loss.
+  If the bot stops, the margin is not topped up and the range is not moved until someone steps in.
+  Nothing guarantees that the fees are larger than what price swings, the hedge and funding cost.
 - **Tokenised stocks are other people's tokens.** wANTx and wNVDAx are wrapped xStocks issued by a
   third party. Liquid Reserve is not connected to the issuer or to the companies named, and the issuer
   restricts where its tokens are offered. Read the issuer's terms.
@@ -99,7 +120,7 @@ withdraw what the reserve holds.
 
 ## Deployed contracts
 
-All 53 were exact matches on [Sourcify](https://sourcify.dev) on 2026-11-25. Each address below links
+All 60 were exact matches on [Sourcify](https://sourcify.dev) on 2026-11-27. Each address below links
 to its Sourcify page. The same list, for programs, is
 [`deployments/addresses.json`](deployments/addresses.json).
 
@@ -175,10 +196,29 @@ to its Sourcify page. The same list, for programs, is
 | Per-batch agent used by the factory | [`0x3bc9BDe628601aaF960b0B55aB2B3Ca6B2422cE7`](https://repo.sourcify.dev/999/0x3bc9BDe628601aaF960b0B55aB2B3Ca6B2422cE7) | [`KntqStakeAgent`](src/staking/KntqStakeBridge.sol) | In use |
 | Launch contract H1 | [`0x3fC483DdC75898F646aDe604a5b68598DA91F46c`](https://repo.sourcify.dev/999/0x3fC483DdC75898F646aDe604a5b68598DA91F46c) | [`ReserveLaunchH1`](src/launch/ReserveLaunch.sol) | Launch only |
 | Launch contract H2 | [`0x1906B8643CecD4f1508DCeC8F784400a4794A8a5`](https://repo.sourcify.dev/999/0x1906B8643CecD4f1508DCeC8F784400a4794A8a5) | [`ReserveLaunchH2`](src/launch/ReserveLaunch.sol) | Launch only |
+| Hedged vault, HYPE-USDC (pilot: deposit cap set by the owner) | [`0x269ECaEaE9dbC37B9d2cb643Deec89394d9E07DD`](https://repo.sourcify.dev/999/0x269ECaEaE9dbC37B9d2cb643Deec89394d9E07DD) | [`HedgedVault`](src/hedged/HedgedVault.sol) | Pilot |
+| Hedged vault: pool side (library) | [`0x3D789E3aC2bEEFaA575006414BE5fc80f2C03ff0`](https://repo.sourcify.dev/999/0x3D789E3aC2bEEFaA575006414BE5fc80f2C03ff0) | [`PoolLib`](src/hedged/PoolLib.sol) | Pilot |
+| Hedged vault: Hyperliquid side (library) | [`0x495A2f5A4AAa03048BCa35c1eA2F7eEd41379b0F`](https://repo.sourcify.dev/999/0x495A2f5A4AAa03048BCa35c1eA2F7eEd41379b0F) | [`HedgeLib`](src/hedged/HedgeLib.sol) | Pilot |
+| Hedged vault: deposits and withdrawals (library) | [`0x3F4B8b6cD50A6AB3f4283195aAB5e72E5828ecc6`](https://repo.sourcify.dev/999/0x3F4B8b6cD50A6AB3f4283195aAB5e72E5828ecc6) | [`FlowLib`](src/hedged/FlowLib.sol) | Pilot |
+| Hedged vault: upkeep (library) | [`0xDa9c4bDFfE86A542Ea91bf327bF675Fe5e6F916F`](https://repo.sourcify.dev/999/0xDa9c4bDFfE86A542Ea91bf327bF675Fe5e6F916F) | [`KeepLib`](src/hedged/KeepLib.sol) | Pilot |
+| Hedged vault: fee forwarder (bridges the fee to the vault fee splitter on Elysium) | [`0x8cAdAaa251f4c25795212B679cc8A155Cb13B732`](https://repo.sourcify.dev/999/0x8cAdAaa251f4c25795212B679cc8A155Cb13B732) | [`FeeForwarder`](src/hedged/FeeForwarder.sol) | Pilot |
+| Hedged vault: reader for the site and the bot | [`0x455F0895eb03a806d9F21638D96b8aBCAd32F5CE`](https://repo.sourcify.dev/999/0x455F0895eb03a806d9F21638D96b8aBCAd32F5CE) | [`HedgedLens`](src/hedged/HedgedLens.sol) | Pilot |
 
 "Retired" means the site no longer lists it for new deposits. Its code still runs, and anyone who
 still has a deposit there can withdraw. "Launch only" contracts created and wired up other contracts
-in one transaction and do nothing afterwards.
+in one transaction and do nothing afterwards. "Pilot" means it is live and takes deposits up to a
+cap the owner sets while it is being tried out.
+
+[`CoreSpike`](src/hedged/CoreSpike.sol) is not in the list. It is a small contract the owner put on
+HyperEVM (`0xf8011b2148987afBdbD4366D197835f39c112F78`) to find out how Hyperliquid's exchange treats
+a contract's account before the hedged vault was launched. Only its owner can use it. It is not part
+of the vault and it is not on Sourcify. A build of the source here gives the code at that address,
+apart from the values fixed at creation.
+
+`VaultZapV3`, a third helper for one-token deposits into the stock vaults, was put on Elysium on
+2026-11-27 at `0xE5F26B503C8D04AF392EDF7b6Eec0598aE0c6505`, and the site code here already uses it.
+Its source and its tests are not in this repository yet, it is not in the list above, and when this
+was written it was not yet on Sourcify.
 
 Not deployed, although the source is here: `CreatorPayout`, `YieldRouter`, `LiquidReserveStaking`,
 `KinetiqRateProvider`, and the `KntqStakingVault` contract inside
@@ -191,7 +231,7 @@ vault). They belong to the first design and are still used by tests.
 holds for that address and whether they compile to exactly the code on the chain ("exact match").
 
 **All of them against this repository.** This compares every source file Sourcify holds for every
-address with the file of the same path here, byte for byte (1,534 files). It only reads.
+address with the file of the same path here, byte for byte (1,693 files). It only reads.
 
 ```bash
 python3 script/check-sourcify.py
@@ -206,7 +246,10 @@ cast code 0xeAd849357Ba8Dbc5A6F205AA0036Bd3d677b0D61 --rpc-url https://rpc.elysi
 
 The two are the same length and differ only where values fixed at creation (token addresses and the
 like) are written into the code. Those places are listed under `immutableReferences` in
-`out/LockedReserve.sol/LockedReserve.json` after a build.
+`out/LockedReserve.sol/LockedReserve.json` after a build. The hedged vault uses four
+libraries that sit at their own addresses (`PoolLib`, `HedgeLib`, `FlowLib`, `KeepLib`). A build of
+`HedgedVault`, or of a library that calls another one, leaves a placeholder wherever the code on the
+chain has a library's address.
 
 **The exact compiler input.** `deployments/<chain>/<Contract>.standard-input.json` is the input the
 deployed code was compiled from (solc 0.8.26, optimizer 200 runs, EVM version cancun). Feed it to
@@ -234,7 +277,7 @@ forge build
 forge test
 ```
 
-`forge test` runs 213 tests on your own machine and skips the rest.
+`forge test` runs 226 tests on your own machine and skips the rest.
 
 The skipped ones run against copies of the live chains, read through the public endpoints in
 [`foundry.toml`](foundry.toml). They are slow, because those endpoints limit how fast they answer.
@@ -243,7 +286,7 @@ The skipped ones run against copies of the live chains, read through the public 
 ELYSIUM_FORK=true HYPEREVM_FORK=true forge test --match-path "test/fork/*"
 ```
 
-When these were run on 2026-11-25, all 116 passed: none failed and none was skipped.
+When these were run on 2026-11-27, all 148 passed: none failed and none was skipped.
 
 Many of these suites were written to rehearse a launch or an owner step before it was sent. Once
 that step has happened on the real chain, today's chain no longer has the rehearsal's starting
@@ -264,7 +307,8 @@ contract.
 ## The bot
 
 The routine steps (collecting fees, moving them along the path above, re-centring vault ranges,
-taking price readings, carrying KNTQ staking batches across the bridge) are sent by a bot.
+taking price readings, carrying KNTQ staking batches across the bridge, keeping the hedged vault's
+short and margin in line) are sent by a bot.
 
 - The code that runs is in [`keeper/hosted/`](keeper/hosted/). It runs as scheduled functions on a
   hosting service, every few minutes. [`keeper/src/`](keeper/src/) is an earlier version made to run
@@ -287,7 +331,8 @@ charts. Every visitor's browser receives it. It is not a wallet key.
 
 - Other people's contracts that this system depends on: Ascend's (the $liquid coin, its pool, its fee
   split, its burn address), Kinetiq's (kHYPE, sKNTQ, KNTQ), Uniswap v4's pool manager, the bridge
-  between Elysium and HyperEVM, the xStocks tokens, and Hyperliquid's market data.
+  between Elysium and HyperEVM, the xStocks tokens, Hyperliquid's market data, Hyperliquid's exchange
+  (where the hedged vault holds its short), and Project X's pool.
 - The live state. Balances, caps, shares and who the keeper is are read from the chain, not from here.
 - The future. What the owner and the timelock are able to change is listed above.
 - Any kind of audit or guarantee.

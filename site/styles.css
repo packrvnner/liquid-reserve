@@ -637,3 +637,50 @@ i.bx.idle { background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line
 .mini-range .p { fill: var(--ink); }
 .mini-range.earning span { color: var(--good); }
 .mini-range.waiting span, .mini-range.out span { color: var(--warn); }
+
+/* ---------- liquid vessels and tubes: live positions (js/liquid.js, used by js/hedged.js) ---------- */
+.lqv { display: block; }
+.lqv svg { display: block; width: 100%; height: auto; overflow: visible; }
+.lqv .glass { fill: var(--face); }
+.lqv .rim { fill: none; stroke-width: 1.6; }
+.lqv .glint { fill: none; stroke: var(--mark-a); stroke-width: 2; stroke-linecap: round; opacity: 0.5; }
+.lqv .mark { stroke: var(--ink-3); stroke-width: 1; stroke-linecap: round; }
+.lqv .mark.strong { stroke: var(--ink); stroke-width: 1.6; }
+.lqv .float line { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.lqv .float circle { fill: var(--ink); stroke: var(--surface); stroke-width: 1.5; }
+.lqv .wave { animation: lqv-wave 7s linear infinite; }
+.lqv .wave.b { animation-duration: 11s; animation-direction: reverse; }
+@keyframes lqv-wave { to { transform: translateX(-90px); } }
+.lqv .drip path { fill: var(--mark-b); }
+.lqv .drip { animation: lqv-drip 3.6s cubic-bezier(0.5, 0, 0.9, 0.6) infinite; }
+@keyframes lqv-drip { 0% { transform: translateY(-14px); opacity: 0; } 12%, 78% { opacity: 1; } 100% { transform: translateY(var(--lqv-fall, 80px)); opacity: 0; } }
+
+.lqt { position: relative; height: 36px; border-radius: 999px; padding: 3px; border: 1.5px solid transparent; background: linear-gradient(var(--face), var(--face)) padding-box, var(--liquid-soft) border-box; }
+.lqt .in { display: flex; gap: 2px; height: 100%; border-radius: 999px; overflow: hidden; }
+.lqt .in i { display: flex; align-items: center; padding-left: 10px; min-width: 3px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 74%, #fff) 0%, var(--c) 46%, color-mix(in srgb, var(--c) 74%, #000) 100%); }
+.lqt .in span { font: 600 12px var(--sans); color: #fff; font-style: normal; white-space: nowrap; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.lqt .sheen { position: absolute; inset: 3px; border-radius: 999px; pointer-events: none; background: linear-gradient(100deg, transparent 0 40%, rgba(255, 255, 255, 0.2) 50%, transparent 60% 100%); background-size: 260% 100%; animation: lqt-sheen 9s linear infinite; }
+@keyframes lqt-sheen { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+
+.lq-live { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+.lq-live .item { display: grid; justify-items: center; align-content: start; gap: 10px; text-align: center; min-width: 0; }
+.lq-live .item .lqv { width: min(112px, 100%); }
+.lq-live .t { display: grid; gap: 3px; min-width: 0; }
+.lq-live .k { font: 500 10.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.lq-live .v { font-size: 20px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.lq-live .s { font-size: 12.5px; color: var(--ink-2); }
+.statgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.statgrid .st { padding: 14px 14px 12px; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 4px; align-content: start; min-width: 0; }
+.statgrid .st .k { font: 500 10.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
+.statgrid .st .v { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.statgrid .st .s { font-size: 12px; color: var(--ink-3); }
+.statgrid .st.wait .v { color: var(--ink-3); }
+@media (max-width: 760px) { .statgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .lq-live { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .lq-live .item { grid-template-columns: 78px minmax(0, 1fr); justify-items: start; align-items: center; text-align: left; column-gap: 16px; }
+  .lq-live .item .lqv { width: 78px; }
+}
+@media (max-width: 400px) { .statgrid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .lqv .wave, .lqt .sheen { animation: none; } .lqv .drip { display: none; } }
+

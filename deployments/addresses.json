@@ -544,6 +544,76 @@
       "source": "src/staking/KntqStakeBridge.sol",
       "status": "live",
       "frozenInput": null
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault, HYPE-USDC (pilot: deposit cap set by the owner)",
+      "chain": 999,
+      "address": "0x269ECaEaE9dbC37B9d2cb643Deec89394d9E07DD",
+      "contract": "HedgedVault",
+      "source": "src/hedged/HedgedVault.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/HedgedVault.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: pool side (library)",
+      "chain": 999,
+      "address": "0x3D789E3aC2bEEFaA575006414BE5fc80f2C03ff0",
+      "contract": "PoolLib",
+      "source": "src/hedged/PoolLib.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/PoolLib.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: Hyperliquid side (library)",
+      "chain": 999,
+      "address": "0x495A2f5A4AAa03048BCa35c1eA2F7eEd41379b0F",
+      "contract": "HedgeLib",
+      "source": "src/hedged/HedgeLib.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/HedgeLib.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: deposits and withdrawals (library)",
+      "chain": 999,
+      "address": "0x3F4B8b6cD50A6AB3f4283195aAB5e72E5828ecc6",
+      "contract": "FlowLib",
+      "source": "src/hedged/FlowLib.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/FlowLib.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: upkeep (library)",
+      "chain": 999,
+      "address": "0xDa9c4bDFfE86A542Ea91bf327bF675Fe5e6F916F",
+      "contract": "KeepLib",
+      "source": "src/hedged/KeepLib.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/KeepLib.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: fee forwarder (bridges the fee to the vault fee splitter on Elysium)",
+      "chain": 999,
+      "address": "0x8cAdAaa251f4c25795212B679cc8A155Cb13B732",
+      "contract": "FeeForwarder",
+      "source": "src/hedged/FeeForwarder.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/FeeForwarder.standard-input.json"
+    },
+    {
+      "group": "hyperevm",
+      "label": "Hedged vault: reader for the site and the bot",
+      "chain": 999,
+      "address": "0x455F0895eb03a806d9F21638D96b8aBCAd32F5CE",
+      "contract": "HedgedLens",
+      "source": "src/hedged/HedgedLens.sol",
+      "status": "pilot",
+      "frozenInput": "deployments/hyperevm-999/HedgedLens.standard-input.json"
     }
   ]
 }

@@ -7,6 +7,7 @@ import { columns, area, spark } from "./charts.js";
 import { daysFor, perDay, cumulative, dayLabel } from "./history.js";
 import { isLaunched, coinLive } from "./data.js";
 import { flow } from "./flow.js";
+import { hedgedTvl, hedgedLive, hedgedKnown } from "./hedged.js";
 
 /** The coin exists, so buybacks, the reserve and trades can be charted, even before the full flywheel. */
 const liveNow = (cfg) => isLaunched(cfg) || coinLive(cfg);
@@ -109,12 +110,21 @@ function paintModel(S, root) {
 function protocol(S) {
   const launched = isLaunched(S.cfg), m = S.market, r = S.reserves, f = S.flywheel?.totals, h = S.history;
   const live = (S.vaults ?? []).filter((v) => v.live), all = S.vaults ?? [];
-  const tvl = live.reduce((s, v) => s + (v.tvlUsd || 0), 0), earned = live.reduce((s, v) => s + (v.earnedUsd || 0), 0);
+  // the hedged vault on HyperEVM counts as a vault too (js/hedged.js): its worth is part of what is in the vaults
+  const tvl = live.reduce((s, v) => s + (v.tvlUsd || 0), 0) + hedgedTvl(S), earned = live.reduce((s, v) => s + (v.earnedUsd || 0), 0);
+  const nLive = live.length + hedgedLive(S), nAll = all.length + hedgedKnown(S);
   const vaultTiles = [
-    tile("Vault TVL", S.vaults ? (live.length ? usd(tvl) : "—") : val(undefined), `${live.length} of ${all.length} vaults live`),
+    tile("Vault TVL", S.vaults ? (nLive ? usd(tvl) : "—") : val(undefined), `${nLive} of ${nAll} vaults live${hedgedLive(S) ? `, ${usd(hedgedTvl(S))} of it in the hedged vault` : ""}`),
     tile("Earned in vaults", S.vaults ? (live.length ? usd(earned) : "—") : val(undefined), "for depositors, after fees"),
   ];
   const sum = (rows) => rows.reduce((s, e) => s + e.amount, 0);
+  // Everything $liquid has ever traded for, in every pool it trades in (Ascend's and the vaults' own). Each trade is
+  // counted once, by the HYPE that changed hands; the dollar figure prices that HYPE at today's price.
+  const trades = h?.trades ?? [], volHype = trades.reduce((s, x) => s + x.hype, 0), bought = trades.filter((x) => x.side === "buy").length;
+  const volumeTiles = [
+    tile("Volume · all time", h ? usd(volHype * (m?.usd.HYPE ?? NaN)) : val(undefined), h ? `${amount(volHype)} HYPE traded, at today's HYPE price` : ""),
+    tile("Trades · all time", h ? amount(trades.length) : val(undefined), h ? `${amount(bought)} buys and ${amount(trades.length - bought)} sells, all pools` : ""),
+  ];
   if (!launched && coinLive(S.cfg)) {
     const now = S.heads?.elysium?.time ?? Date.now() / 1000, day = (h?.trades ?? []).filter((x) => x.t > now - 86400);
     const vol = day.reduce((s, x) => s + x.hype, 0) * (m?.usd.HYPE ?? NaN), pl = m?.usd["$liquid"], supply = h?.supply || 1e9;
@@ -122,6 +132,7 @@ function protocol(S) {
       tile("$liquid", val(pl, price), "Ascend pool, live"),
       tile("Market cap", isFinite(pl) ? usd(pl * supply) : val(undefined), `${amount(supply)} supply`),
       tile("Volume · 24h", h ? usd(vol) : val(undefined), h ? `${day.length} trade${day.length === 1 ? "" : "s"}, all pools` : ""),
+      ...volumeTiles,
       tile("Locked in the reserve", S.inbox?.pre ? usd(S.inbox.pre.lockedUsd) : val(undefined), "kHYPE and sKNTQ, for good"),
       tile("Supply burned", h?.supply ? pct(h.burned / h.supply, 3) : val(undefined), h ? `${amount(h.burned)} $liquid` : ""),
       tile("Bought back", h ? amount(sum(h.buys)) : val(undefined), "$liquid, with fees and yield"),
@@ -134,6 +145,7 @@ function protocol(S) {
         tile("Total locked", val(r?.totalUsd, usd), "both reserves, for good"),
         tile("Supply burned", h?.supply ? pct(h.burned / h.supply, 2) : val(undefined), h ? `${amount(h.burned)} $liquid` : ""),
         tile("Bought back", h ? amount(sum(h.buys)) : val(undefined), "$liquid, all time"),
+        ...volumeTiles,
         tile("Fees into the reserve", val(f?.toReserveUsd, usd), "all time"),
         tile("Yield harvested", val(f?.harvestedUsd, usd), "all time"),
         tile("KNTQ burned", h ? amount(sum(h.kntqBurns)) : val(undefined), "ecosystem buyback"),
