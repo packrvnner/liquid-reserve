@@ -6,6 +6,9 @@ import { BANDS } from "./analytics.js";
 import { short, amount } from "./format.js";
 import { flow, share } from "./flow.js";
 
+// The public code repository: contracts, tests, deployment records, bot and site code.
+const REPO_URL = "https://github.com/packrvnner/liquid-reserve";
+
 const up = (x) => x.charAt(0).toUpperCase() + x.slice(1);
 
 const t = (head, rows, numCols = []) =>
@@ -273,6 +276,8 @@ const PAGES = [
         ["KNTQ", explorer(c, "elysium", "address", c.tokens.KNTQ.address), "Elysium · on its way to HyperEVM"],
         ["$liquid", c.tokens["$liquid"].address ? explorer(c, "elysium", "address", c.tokens["$liquid"].address) : `<span class="dim">Created at launch on Ascend</span>`, fl.drop ? "Elysium · held by the drop, not locked" : "Elysium"],
       ])}
+      <h2>The code</h2>
+      <p>The contracts, their tests, the deployment records and the code of the bot and of this site are on <a href="${REPO_URL}" target="_blank" rel="noopener">GitHub</a>. A script there compares every source file Sourcify holds for every deployed address with the same file in the repository, byte for byte, and the README shows how to build the code and compare it with the chain yourself. Public is not audited.</p>
       <div class="callout warn"><p>Only trust addresses listed on <b>liquidreserve.xyz</b> or posted by <a href="${X_URL}" target="_blank" rel="noopener">@${X_HANDLE}</a>. Ascend's real app is linked from its docs; <b>ascend.now is not Ascend</b>.</p></div>`;
     },
   },
@@ -287,6 +292,7 @@ const PAGES = [
         <li><b>End-to-end keeper run</b> on forks of both chains.</li>
         <li><b>Vault source code published and verified</b> on the Elysium explorer and on Sourcify, as an exact match to what is deployed. Anyone can read it and check it against the chain. Verified means the published code is the real code. It does not mean the code has been audited.</li>
         <li><b>Reserve and flywheel source published</b> on Sourcify as an exact match: the reserve contracts (live since 15 November 2026)${fl.full && fl.yieldOn ? `, and the HYPE-only router, the drop feeder, the yield director and the reward pools (in force since ${esc(fl.since)})` : ""}. They went live on mainnet without an audit.</li>
+        <li><b>Code published on GitHub</b>: the contracts, their tests, the deployment records and the code of the bot and of this site, at <a href="${REPO_URL}" target="_blank" rel="noopener">github.com/packrvnner/liquid-reserve</a>. Anyone can build it and run the tests. Published is not audited.</li>
       </ul>
       <h2>Not done yet</h2>
       <ul>

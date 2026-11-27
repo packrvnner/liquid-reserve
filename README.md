@@ -228,8 +228,8 @@ Needs [Foundry](https://getfoundry.sh) (built and tested with forge 1.9.0). The 
 Uniswap v4-core v4.0.0.
 
 ```bash
-git clone --recurse-submodules <this repository's address>
-cd <the folder it made>
+git clone --recurse-submodules https://github.com/packrvnner/liquid-reserve
+cd liquid-reserve
 forge build
 forge test
 ```
